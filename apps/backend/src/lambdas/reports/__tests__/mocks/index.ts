@@ -1,0 +1,81 @@
+export const mockedExpenses = [
+  {
+    id: "expense-001",
+    userId: "user-123",
+    amount: 4290,
+    description: "Lunch",
+    categoryId: "food",
+    date: "2026-08-22",
+    createdAt: "2026-08-22T12:00:00.000Z",
+    updatedAt: "2026-08-22T12:00:00.000Z",
+  },
+  {
+    id: "expense-002",
+    userId: "user-123",
+    amount: 1500,
+    description: "Bus",
+    categoryId: "transport",
+    date: "2026-08-20",
+    createdAt: "2026-08-20T12:00:00.000Z",
+    updatedAt: "2026-08-20T12:00:00.000Z",
+  },
+  {
+    id: "expense-003",
+    userId: "user-123",
+    amount: 2500,
+    description: "Movie",
+    categoryId: "entertainment",
+    date: "2026-08-15",
+    createdAt: "2026-08-15T12:00:00.000Z",
+    updatedAt: "2026-08-15T12:00:00.000Z",
+  },
+  {
+    id: "expense-004",
+    userId: "user-123",
+    amount: 3000,
+    description: "Dinner",
+    categoryId: "food",
+    date: "2026-07-18",
+    createdAt: "2026-07-18T12:00:00.000Z",
+    updatedAt: "2026-07-18T12:00:00.000Z",
+  },
+  {
+    id: "expense-005",
+    userId: "user-123",
+    amount: 2000,
+    description: "Train",
+    categoryId: "transport",
+    date: "2026-07-10",
+    createdAt: "2026-07-10T12:00:00.000Z",
+    updatedAt: "2026-07-10T12:00:00.000Z",
+  },
+  {
+    id: "expense-006",
+    userId: "user-123",
+    amount: 5000,
+    description: "Concert",
+    categoryId: "entertainment",
+    date: "2026-06-25",
+    createdAt: "2026-06-25T12:00:00.000Z",
+    updatedAt: "2026-06-25T12:00:00.000Z",
+  },
+];
+
+export const augustReport = {
+  month: "2026-08",
+  total: 8290,
+  categories: [
+    {
+      categoryId: "food",
+      total: 4290,
+    },
+    {
+      categoryId: "transport",
+      total: 1500,
+    },
+    {
+      categoryId: "entertainment",
+      total: 2500,
+    },
+  ],
+};
