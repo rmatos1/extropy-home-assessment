@@ -2,13 +2,16 @@ import { useState } from "react";
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@extropy/shared";
 
 import { InputGroup } from "../inputGroup";
+import { EyeIcon, EyeSlashIcon } from "../../icons";
 
 type PasswordInputProps = {
   autoCompleteType?: "current-password" | "new-password";
+  isRequired?: boolean;
 };
 
 export const PasswordInput = ({
   autoCompleteType = "current-password",
+  isRequired = true,
 }: PasswordInputProps) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -20,15 +23,15 @@ export const PasswordInput = ({
       autoCompleteType={autoCompleteType}
       minLength={MIN_PASSWORD_LENGTH}
       maxLength={MAX_PASSWORD_LENGTH}
-      isRequired
+      isRequired={isRequired}
       endAdornment={
         <button
-          className="absolute top-8 right-1 text-gray-500 bg-gray-100 py-1 px-3 text-md"
+          className="absolute top-7.5 right-0.5 p-1.5"
           type="button"
           onClick={() => setShowPassword((current) => !current)}
           aria-label={showPassword ? "Hide password" : "Show password"}
         >
-          {showPassword ? "Hide" : "Show"}
+          {showPassword ? <EyeIcon /> : <EyeSlashIcon />}
         </button>
       }
     />

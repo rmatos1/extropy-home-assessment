@@ -8,10 +8,6 @@ export type LoginInput = {
   password: string;
 };
 
-export type AuthResult = {
-  token: string;
-};
-
 export type AuthRequest = {
   email: string;
   password: string;

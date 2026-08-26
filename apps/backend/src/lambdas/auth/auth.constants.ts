@@ -8,3 +8,4 @@ export const ERROR_MESSAGES = {
   INVALID_EMAIL: "Invalid email format",
   INVALID_PASSWORD: `Password must be at least ${MIN_PASSWORD_LENGTH} and at most ${MAX_PASSWORD_LENGTH} characters long`,
 };
+export const SESSION_COOKIE_NAME = "session";

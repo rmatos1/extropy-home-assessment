@@ -2,15 +2,23 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import type { User } from "@extropy/shared";
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@extropy/shared";
+import {
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+} from "@extropy/shared";
 
-import { createUser, getUserByEmail } from "./auth.repository";
+import {
+  createUser,
+  getUserByEmail,
+  getUserById,
+} from "./auth.repository";
 import {
   TOKEN_EXPIRATION_TIME,
   EMAIL_PATTERN,
   BCRYPT_SALT_ROUNDS,
+const SESSION_COOKIE_NAME
 } from "./auth.constants";
-import { SignupInput, LoginInput, AuthResult } from "./auth.types";
+import type { SignupInput, LoginInput } from "./auth.types";
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -50,7 +58,21 @@ function generateToken(user: User): string {
   );
 }
 
-export async function signup(input: SignupInput): Promise<AuthResult> {
+export function createSessionCookie(
+  token: string,
+  maxAge?: number
+): string {
+  return [
+    `${SESSION_COOKIE_NAME}=${token}`,
+    "HttpOnly",
+    "Secure",
+    "SameSite=Lax",
+    "Path=/",
+    ...(maxAge !== undefined ? [`Max-Age=${maxAge}`] : []),
+  ].join("; ");
+}
+
+export async function signup(input: SignupInput): Promise<string> {
   const email = input.email.trim().toLowerCase();
 
   validateEmail(email);
@@ -64,7 +86,10 @@ export async function signup(input: SignupInput): Promise<AuthResult> {
 
   const now = new Date().toISOString();
 
-  const passwordHash = await bcrypt.hash(input.password, BCRYPT_SALT_ROUNDS);
+  const passwordHash = await bcrypt.hash(
+    input.password,
+    BCRYPT_SALT_ROUNDS
+  );
 
   const user: User = {
     id: crypto.randomUUID(),
@@ -76,12 +101,10 @@ export async function signup(input: SignupInput): Promise<AuthResult> {
 
   await createUser(user);
 
-  return {
-    token: generateToken(user),
-  };
+  return generateToken(user);
 }
 
-export async function login(input: LoginInput): Promise<AuthResult> {
+export async function login(input: LoginInput): Promise<string> {
   const email = input.email.trim().toLowerCase();
 
   validateEmail(email);
@@ -101,19 +124,32 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     throw new Error("INVALID_CREDENTIALS");
   }
 
-  return {
-    token: generateToken(user),
-  };
+  return generateToken(user);
 }
 
-export function getAuthenticatedUserId(
-  authorizationHeader: string | undefined
+function getTokenFromCookie(
+  cookieHeader: string | undefined
 ): string {
-  if (!authorizationHeader?.startsWith("Bearer ")) {
+  const sessionCookie = cookieHeader
+    ?.split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) =>
+      cookie.startsWith(`${SESSION_COOKIE_NAME}=`)
+    );
+
+  if (!sessionCookie) {
     throw new Error("UNAUTHORIZED");
   }
 
-  const token = authorizationHeader.slice("Bearer ".length);
+  return sessionCookie.slice(
+    `${SESSION_COOKIE_NAME}=`.length
+  );
+}
+
+export function getAuthenticatedUserId(
+  cookieHeader: string | undefined
+): string {
+  const token = getTokenFromCookie(cookieHeader);
 
   const payload = jwt.verify(token, getJwtSecret());
 
@@ -126,4 +162,21 @@ export function getAuthenticatedUserId(
   }
 
   return payload.sub;
+}
+
+export async function getCurrentUser(
+  cookieHeader: string | undefined
+): Promise<Pick<User, "id" | "email">> {
+  const userId = getAuthenticatedUserId(cookieHeader);
+
+  const user = await getUserById(userId);
+
+  if (!user) {
+    throw new Error("UNAUTHORIZED");
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+  };
 }

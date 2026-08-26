@@ -1,12 +1,23 @@
 type InputGroupProps = {
   label: string;
   name: string;
-  type: "text" | "email" | "password";
+  type: "text" | "email" | "password" | "number" | "date";
   isRequired?: boolean;
   autoCompleteType?: string;
   endAdornment?: React.ReactNode;
   minLength?: number;
   maxLength?: number;
+  inputMode?:
+    | "text"
+    | "email"
+    | "search"
+    | "tel"
+    | "url"
+    | "none"
+    | "numeric"
+    | "decimal";
+  pattern?: string;
+  max?: string;
 };
 
 export const InputGroup = ({
@@ -18,6 +29,9 @@ export const InputGroup = ({
   endAdornment,
   minLength,
   maxLength,
+  inputMode,
+  pattern,
+  max,
 }: InputGroupProps) => {
   return (
     <div className="flex flex-col gap-1 relative">
@@ -33,6 +47,9 @@ export const InputGroup = ({
         required={isRequired}
         minLength={minLength}
         maxLength={maxLength}
+        inputMode={inputMode}
+        pattern={pattern}
+        max={max}
       />
       {endAdornment}
     </div>

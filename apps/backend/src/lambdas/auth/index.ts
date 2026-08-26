@@ -1,36 +1,60 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 
-import { login, signup } from "./auth.helper";
+import {
+  createSessionCookie,
+  getCurrentUser,
+  login,
+  signup,
+} from "./auth.helper";
 import { ERROR_MESSAGES } from "./auth.constants";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
-    if (!event.body) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          message: "Request body is required",
-        }),
-      };
-    }
-
-    const body = JSON.parse(event.body);
-
-    if (event.routeKey === "POST /auth/signup") {
-      const result = await signup(body);
-
-      return {
-        statusCode: 201,
-        body: JSON.stringify(result),
-      };
-    }
-
-    if (event.routeKey === "POST /auth/login") {
-      const result = await login(body);
+    if (event.routeKey === "GET /auth/me") {
+      const user = await getCurrentUser(event.headers.cookie);
 
       return {
         statusCode: 200,
-        body: JSON.stringify(result),
+        body: JSON.stringify(user),
+      };
+    }
+
+    if (
+      event.routeKey === "POST /auth/signup" ||
+      event.routeKey === "POST /auth/login"
+    ) {
+      if (!event.body) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            message: "Request body is required",
+          }),
+        };
+      }
+
+      const body = JSON.parse(event.body);
+
+      if (event.routeKey === "POST /auth/signup") {
+        const token = await signup(body);
+
+        return {
+          statusCode: 201,
+          cookies: [createSessionCookie(token)],
+        };
+      }
+
+      const token = await login(body);
+
+      return {
+        statusCode: 200,
+        cookies: [createSessionCookie(token)],
+      };
+    }
+
+    if (event.routeKey === "POST /auth/logout") {
+      return {
+        statusCode: 204,
+        cookies: [createSessionCookie("", 0)],
       };
     }
 
@@ -63,10 +87,14 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           };
 
         case "INVALID_CREDENTIALS":
+        case "UNAUTHORIZED":
           return {
             statusCode: 401,
             body: JSON.stringify({
-              message: "Invalid email or password.",
+              message:
+                error.message === "UNAUTHORIZED"
+                  ? "Unauthorized"
+                  : "Invalid email or password.",
             }),
           };
       }

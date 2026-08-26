@@ -15,6 +15,12 @@ const serverlessConfiguration = {
       events: [
         {
           httpApi: {
+            method: "GET",
+            path: "/auth/me",
+          },
+        },
+        {
+          httpApi: {
             method: "POST",
             path: "/auth/signup",
           },
