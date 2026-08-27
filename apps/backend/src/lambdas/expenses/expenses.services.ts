@@ -6,36 +6,17 @@ import {
   getExpensesByUserId,
   updateExpenseRecord,
 } from "./expenses.repository";
-
+import {
+  validateAmount,
+  validateDescription,
+  validateCategoryId,
+  validateDate,
+} from "./expenses.helpers";
 import type {
   ExpenseInput,
   GetExpensesInput,
   UpdateExpenseInput,
 } from "./expenses.types";
-
-function validateAmount(amount: number): void {
-  if (!Number.isInteger(amount) || amount <= 0) {
-    throw new Error("INVALID_AMOUNT");
-  }
-}
-
-function validateDate(date: string): void {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new Error("INVALID_DATE");
-  }
-}
-
-function validateDescription(description: string): void {
-  if (!description) {
-    throw new Error("INVALID_DESCRIPTION");
-  }
-}
-
-function validateCategoryId(categoryId: string): void {
-  if (!categoryId) {
-    throw new Error("INVALID_CATEGORY");
-  }
-}
 
 export async function createExpense(
   userId: string,

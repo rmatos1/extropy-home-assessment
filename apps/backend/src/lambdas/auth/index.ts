@@ -1,11 +1,7 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 
-import {
-  createSessionCookie,
-  getCurrentUser,
-  login,
-  signup,
-} from "./auth.helper";
+import { getCurrentUser, login, signup } from "./auth.services";
+import { createSessionCookie } from "./auth.helpers";
 import { ERROR_MESSAGES } from "./auth.constants";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {

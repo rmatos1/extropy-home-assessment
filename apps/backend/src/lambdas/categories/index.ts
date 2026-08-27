@@ -1,7 +1,7 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 
-import { createCategory, getCategories } from "./categories.helper";
-import { getAuthenticatedUserId } from "../auth/auth.helper";
+import { createCategory, getCategories } from "./categories.services";
+import { getAuthenticatedUserId } from "../auth/auth.helpers";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {

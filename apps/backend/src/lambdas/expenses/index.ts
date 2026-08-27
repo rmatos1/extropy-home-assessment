@@ -5,9 +5,9 @@ import {
   deleteExpense,
   getExpenses,
   updateExpense,
-} from "./expenses.helper";
-import { getAuthenticatedUserId } from "../auth/auth.helper";
+} from "./expenses.services";
 import { ERROR_MESSAGES } from "./expenses.constants";
+import { getAuthenticatedUserId } from "../auth/auth.helpers";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {

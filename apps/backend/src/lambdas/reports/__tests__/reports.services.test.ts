@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getSpendingReport } from "../reports.helper";
+import { getSpendingReport } from "../reports.services";
 import { mockedExpenses, augustReport } from "./mocks";
 
 const { getExpensesMock } = vi.hoisted(() => ({
   getExpensesMock: vi.fn(),
 }));
 
-vi.mock("../../expenses/expenses.helper", () => ({
+vi.mock("../../expenses/expenses.services", () => ({
   getExpenses: getExpensesMock,
 }));
 
-describe("reports.helper", () => {
+describe("reports.services", () => {
   const userId = mockedExpenses[0].userId;
 
   beforeEach(() => {

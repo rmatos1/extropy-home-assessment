@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_CATEGORIES } from "../categories.constants";
-import { createCategory, getCategories } from "../categories.helper";
+import { createCategory, getCategories } from "../categories.services";
 import { mockedCategory } from "./mocks";
 
 const { createCategoryRecordMock, getCategoriesByUserIdMock } = vi.hoisted(
@@ -16,7 +16,7 @@ vi.mock("../categories.repository", () => ({
   getCategoriesByUserId: getCategoriesByUserIdMock,
 }));
 
-describe("categories.helper", () => {
+describe("categories.services", () => {
   const { userId, name } = mockedCategory;
 
   beforeEach(() => {

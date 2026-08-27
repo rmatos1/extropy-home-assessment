@@ -8,13 +8,8 @@ import {
   createCategoryRecord,
   getCategoriesByUserId,
 } from "./categories.repository";
+import { validateCategoryName } from "./categories.helpers";
 import { DEFAULT_CATEGORIES } from "./categories.constants";
-
-function validateCategoryName(name: string): void {
-  if (!name.trim()) {
-    throw new Error("INVALID_CATEGORY_NAME");
-  }
-}
 
 export async function createCategory(
   userId: string,

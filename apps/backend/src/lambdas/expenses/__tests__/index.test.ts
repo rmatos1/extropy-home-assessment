@@ -19,7 +19,7 @@ const {
   updateExpenseMock: vi.fn(),
 }));
 
-vi.mock("../expenses.helper", () => ({
+vi.mock("../expenses.services", () => ({
   createExpense: createExpenseMock,
   deleteExpense: deleteExpenseMock,
   getExpenses: getExpensesMock,

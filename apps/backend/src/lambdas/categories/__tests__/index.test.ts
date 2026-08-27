@@ -11,7 +11,7 @@ const { createCategoryMock, getAuthenticatedUserIdMock, getCategoriesMock } =
     getCategoriesMock: vi.fn(),
   }));
 
-vi.mock("../categories.helper", () => ({
+vi.mock("../categories.services", () => ({
   createCategory: createCategoryMock,
   getCategories: getCategoriesMock,
 }));

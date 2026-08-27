@@ -7,7 +7,7 @@ import {
   deleteExpense,
   getExpenses,
   updateExpense,
-} from "../expenses.helper";
+} from "../expenses.services";
 import { mockedExpense, dates } from "./mocks";
 
 const {
@@ -29,7 +29,7 @@ vi.mock("../expenses.repository", () => ({
   updateExpenseRecord: updateExpenseRecordMock,
 }));
 
-describe("expenses.helper", () => {
+describe("expenses.services", () => {
   const { id, userId, amount, description, categoryId, date } = mockedExpense;
 
   beforeEach(() => {

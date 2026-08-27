@@ -15,7 +15,7 @@ vi.mock("../../auth/auth.helpers", () => ({
   getAuthenticatedUserId: getAuthenticatedUserIdMock,
 }));
 
-vi.mock("../reports.helper", () => ({
+vi.mock("../reports.services", () => ({
   getSpendingReport: getSpendingReportMock,
 }));
 

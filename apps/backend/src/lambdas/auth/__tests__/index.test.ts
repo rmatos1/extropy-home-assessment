@@ -5,23 +5,37 @@ import { handler } from "../index";
 import { ERROR_MESSAGES } from "../auth.constants";
 import { mockedUser } from "./mocks";
 
-const { signupMock, loginMock } = vi.hoisted(() => ({
-  signupMock: vi.fn(),
-  loginMock: vi.fn(),
+const { signupMock, loginMock, getCurrentUserMock, createSessionCookieMock } =
+  vi.hoisted(() => ({
+    signupMock: vi.fn(),
+    loginMock: vi.fn(),
+    getCurrentUserMock: vi.fn(),
+    createSessionCookieMock: vi.fn(),
+  }));
+
+vi.mock("../auth.services", () => ({
+  signup: signupMock,
+  login: loginMock,
+  getCurrentUser: getCurrentUserMock,
 }));
 
 vi.mock("../auth.helpers", () => ({
-  signup: signupMock,
-  login: loginMock,
+  createSessionCookie: createSessionCookieMock,
 }));
 
 const createEvent = (
   routeKey: string,
-  body?: unknown
+  body?: unknown,
+  cookie?: string
 ): APIGatewayProxyEventV2 =>
   ({
     routeKey,
     body: body === undefined ? undefined : JSON.stringify(body),
+    headers: cookie
+      ? {
+          cookie,
+        }
+      : {},
   } as APIGatewayProxyEventV2);
 
 describe("auth lambda handler", () => {
@@ -30,20 +44,22 @@ describe("auth lambda handler", () => {
   beforeEach(() => {
     signupMock.mockReset();
     loginMock.mockReset();
+    getCurrentUserMock.mockReset();
+    createSessionCookieMock.mockReset();
   });
 
   describe("POST /auth/signup", () => {
-    it("should return 201 when signup succeeds", async () => {
+    it("should return 201 and set the session cookie when signup succeeds", async () => {
       const input = {
         email,
         password,
       };
 
-      const result = {
-        token: "signup-token",
-      };
+      const token = "signup-token";
+      const cookie = "session=signup-token; HttpOnly";
 
-      signupMock.mockResolvedValueOnce(result);
+      signupMock.mockResolvedValueOnce(token);
+      createSessionCookieMock.mockReturnValueOnce(cookie);
 
       const response = await handler(
         createEvent("POST /auth/signup", input),
@@ -53,10 +69,11 @@ describe("auth lambda handler", () => {
 
       expect(response).toEqual({
         statusCode: 201,
-        body: JSON.stringify(result),
+        cookies: [cookie],
       });
 
       expect(signupMock).toHaveBeenCalledWith(input);
+      expect(createSessionCookieMock).toHaveBeenCalledWith(token);
       expect(loginMock).not.toHaveBeenCalled();
     });
 
@@ -82,6 +99,7 @@ describe("auth lambda handler", () => {
       const event = {
         routeKey: "POST /auth/signup",
         body: "{invalid-json",
+        headers: {},
       } as APIGatewayProxyEventV2;
 
       const response = await handler(event, {} as never, () => undefined);
@@ -159,17 +177,17 @@ describe("auth lambda handler", () => {
   });
 
   describe("POST /auth/login", () => {
-    it("should return 200 when login succeeds", async () => {
+    it("should return 200 and set the session cookie when login succeeds", async () => {
       const input = {
         email,
         password,
       };
 
-      const result = {
-        token: "login-token",
-      };
+      const token = "login-token";
+      const cookie = "session=login-token; HttpOnly";
 
-      loginMock.mockResolvedValueOnce(result);
+      loginMock.mockResolvedValueOnce(token);
+      createSessionCookieMock.mockReturnValueOnce(cookie);
 
       const response = await handler(
         createEvent("POST /auth/login", input),
@@ -179,11 +197,29 @@ describe("auth lambda handler", () => {
 
       expect(response).toEqual({
         statusCode: 200,
-        body: JSON.stringify(result),
+        cookies: [cookie],
       });
 
       expect(loginMock).toHaveBeenCalledWith(input);
+      expect(createSessionCookieMock).toHaveBeenCalledWith(token);
       expect(signupMock).not.toHaveBeenCalled();
+    });
+
+    it("should return 400 when the request body is missing", async () => {
+      const response = await handler(
+        createEvent("POST /auth/login"),
+        {} as never,
+        () => undefined
+      );
+
+      expect(response).toEqual({
+        statusCode: 400,
+        body: JSON.stringify({
+          message: "Request body is required",
+        }),
+      });
+
+      expect(loginMock).not.toHaveBeenCalled();
     });
 
     it("should return 401 when credentials are invalid", async () => {
@@ -227,10 +263,76 @@ describe("auth lambda handler", () => {
     });
   });
 
+  describe("GET /auth/me", () => {
+    it("should return the current user", async () => {
+      const user = {
+        id,
+        email,
+      };
+
+      const cookie = "session=valid-token";
+
+      getCurrentUserMock.mockResolvedValueOnce(user);
+
+      const response = await handler(
+        createEvent("GET /auth/me", undefined, cookie),
+        {} as never,
+        () => undefined
+      );
+
+      expect(response).toEqual({
+        statusCode: 200,
+        body: JSON.stringify(user),
+      });
+
+      expect(getCurrentUserMock).toHaveBeenCalledWith(cookie);
+    });
+
+    it("should return 401 when the session is unauthorized", async () => {
+      getCurrentUserMock.mockRejectedValueOnce(new Error("UNAUTHORIZED"));
+
+      const response = await handler(
+        createEvent("GET /auth/me", undefined, "session=invalid-token"),
+        {} as never,
+        () => undefined
+      );
+
+      expect(response).toEqual({
+        statusCode: 401,
+        body: JSON.stringify({
+          message: "Unauthorized",
+        }),
+      });
+
+      expect(getCurrentUserMock).toHaveBeenCalledWith("session=invalid-token");
+    });
+  });
+
+  describe("POST /auth/logout", () => {
+    it("should return 204 and expire the session cookie", async () => {
+      const cookie = "session=; HttpOnly; Max-Age=0";
+
+      createSessionCookieMock.mockReturnValueOnce(cookie);
+
+      const response = await handler(
+        createEvent("POST /auth/logout"),
+        {} as never,
+        () => undefined
+      );
+
+      expect(response).toEqual({
+        statusCode: 204,
+        cookies: [cookie],
+      });
+
+      expect(createSessionCookieMock).toHaveBeenCalledWith("", 0);
+    });
+  });
+
   describe("unknown routes", () => {
     it("should return 404", async () => {
       const response = await handler(
-        createEvent("GET /auth/unknown", {}),
+        createEvent("GET /auth/unknown"),
         {} as never,
         () => undefined
       );
@@ -244,6 +346,7 @@ describe("auth lambda handler", () => {
 
       expect(signupMock).not.toHaveBeenCalled();
       expect(loginMock).not.toHaveBeenCalled();
+      expect(getCurrentUserMock).not.toHaveBeenCalled();
     });
   });
 
@@ -256,6 +359,43 @@ describe("auth lambda handler", () => {
           email,
           password,
         }),
+        {} as never,
+        () => undefined
+      );
+
+      expect(response).toEqual({
+        statusCode: 500,
+        body: JSON.stringify({
+          message: "Internal server error",
+        }),
+      });
+    });
+
+    it("should return 500 when login fails unexpectedly", async () => {
+      loginMock.mockRejectedValueOnce(new Error("Unexpected error"));
+
+      const response = await handler(
+        createEvent("POST /auth/login", {
+          email,
+          password,
+        }),
+        {} as never,
+        () => undefined
+      );
+
+      expect(response).toEqual({
+        statusCode: 500,
+        body: JSON.stringify({
+          message: "Internal server error",
+        }),
+      });
+    });
+
+    it("should return 500 when getCurrentUser fails unexpectedly", async () => {
+      getCurrentUserMock.mockRejectedValueOnce(new Error("Unexpected error"));
+
+      const response = await handler(
+        createEvent("GET /auth/me", undefined, "session=valid-token"),
         {} as never,
         () => undefined
       );
