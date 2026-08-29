@@ -10,18 +10,14 @@ import {
 type DashboardSideMenuProps = {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
-  setIsAuthenticated: (value: boolean) => void;
+  onClickLogout: () => void;
 };
 
 export function DashboardSideMenu({
   isCollapsed,
   onToggleCollapse,
-  setIsAuthenticated,
+  onClickLogout,
 }: DashboardSideMenuProps) {
-  const onLogout = () => {
-    setIsAuthenticated(false);
-  };
-
   return (
     <aside
       className={`fixed min-h-screen bg-linear-to-b from-blue-700 to-blue-900 shadow-lg px-3 ${
@@ -61,7 +57,7 @@ export function DashboardSideMenu({
             <button
               type="button"
               className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-medium text-white/90 transition-colors duration-200 hover:bg-white/10"
-              onClick={onLogout}
+              onClick={onClickLogout}
             >
               <ArrowTurnDownIcon />
               {!isCollapsed && <span>Log out</span>}

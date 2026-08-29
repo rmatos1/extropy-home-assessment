@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Expense } from "@extropy/shared";
+import type { ExpenseRecord } from "@extropy/shared";
 
 import {
   createExpense,
@@ -347,7 +347,7 @@ describe("expenses.services", () => {
     });
 
     it("should filter expenses by category", async () => {
-      const otherExpense: Expense = {
+      const otherExpense: Expenserecord = {
         ...mockedExpense,
         id: "expense-456",
         categoryId: "transport",
@@ -373,13 +373,13 @@ describe("expenses.services", () => {
     });
 
     it("should combine date range and category filters", async () => {
-      const matchingExpense: Expense = {
+      const matchingExpense: ExpenseRecord = {
         ...mockedExpense,
         date: "2026-08-20",
         categoryId: "food",
       };
 
-      const otherCategory: Expense = {
+      const otherCategory: ExpenseRecord = {
         ...mockedExpense,
         id: "expense-456",
         date: "2026-08-21",

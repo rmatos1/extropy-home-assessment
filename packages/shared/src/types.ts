@@ -7,12 +7,15 @@ export type User = {
 };
 
 export type Expense = {
-  id: string;
-  userId: string;
   amount: number;
   description: string;
   categoryId: string;
   date: string;
+};
+
+export type ExpenseRecord = Expense & {
+  id: string;
+  userId: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -28,6 +31,6 @@ export type CustomCategory = Category & {
   updatedAt: string;
 };
 
-export type ExpenseResponse = Omit<Expense, "userId">;
+export type ExpenseResponse = Omit<ExpenseRecord, "userId">;
 
 export type CustomCategoryResponse = Omit<CustomCategory, "userId">;

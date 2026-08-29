@@ -1,5 +1,3 @@
-export { AddCategory } from "./addCategory";
-export { AddExpense } from "./addExpense";
 export { Categories } from "./categories";
 export { Expenses } from "./expenses";
 export { Login } from "./login";

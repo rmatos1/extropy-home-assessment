@@ -4,8 +4,6 @@ export { ChevronDoubleRightIcon } from "./chevronDoubleRightIcon";
 export { EyeIcon } from "./eyeIcon";
 export { EyeSlashIcon } from "./eyeSlashIcon";
 export { FolderIcon } from "./folderIcon";
-export { FolderPlusIcon } from "./folderPlusIcon";
 export { GraphIcon } from "./graphIcon";
-export { PlusIcon } from "./plusIcon";
 export { UserIcon } from "./userIcon";
 export { WalletIcon } from "./walletIcon";

@@ -1,19 +1,5 @@
-import {
-  AddCategory,
-  AddExpense,
-  Categories,
-  Expenses,
-  Overview,
-  Profile,
-} from "../pages";
-import {
-  FolderIcon,
-  FolderPlusIcon,
-  GraphIcon,
-  PlusIcon,
-  UserIcon,
-  WalletIcon,
-} from "../icons";
+import { Categories, Expenses, Overview, Profile } from "../pages";
+import { FolderIcon, GraphIcon, UserIcon, WalletIcon } from "../icons";
 
 export const dashboardNavigation = [
   {
@@ -29,22 +15,10 @@ export const dashboardNavigation = [
     icon: WalletIcon,
   },
   {
-    name: "Add Expense",
-    to: "/add-expense",
-    Component: AddExpense,
-    icon: PlusIcon,
-  },
-  {
     name: "Categories",
     to: "/categories",
     Component: Categories,
     icon: FolderIcon,
-  },
-  {
-    name: "Add Category",
-    to: "/add-category",
-    Component: AddCategory,
-    icon: FolderPlusIcon,
   },
   {
     name: "Profile",

@@ -5,7 +5,7 @@ import {
   DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
 
-import type { Expense } from "@extropy/shared";
+import type { ExpenseRecord } from "@extropy/shared";
 
 import { dynamoDb } from "../../dynamodb";
 import { USER_DATE_INDEX_NAME } from "./expenses.constants";
@@ -17,7 +17,9 @@ if (!tableName) {
   throw new Error("EXPENSES_TABLE_NAME environment variable is not configured");
 }
 
-export async function createExpenseRecord(expense: Expense): Promise<void> {
+export async function createExpenseRecord(
+  expense: ExpenseRecord
+): Promise<void> {
   await dynamoDb.send(
     new PutCommand({
       TableName: tableName,
@@ -30,7 +32,7 @@ export async function getExpensesByUserId({
   userId,
   startDate,
   endDate,
-}: ExpenseUserIdDatesInput): Promise<Expense[]> {
+}: ExpenseUserIdDatesInput): Promise<ExpenseRecord[]> {
   let keyConditionExpression = "userId = :userId";
 
   const expressionAttributeValues: Record<string, string> = {
@@ -64,7 +66,7 @@ export async function getExpensesByUserId({
     })
   );
 
-  return (result.Items ?? []) as Expense[];
+  return (result.Items ?? []) as ExpenseRecord[];
 }
 
 export async function updateExpenseRecord({

@@ -24,7 +24,7 @@ export async function loginAction({ request }: ActionFunctionArgs) {
       "login"
     );
 
-    useAuthStore.getState().setIsAuthenticated(true);
+    useAuthStore.getState().setUserEmail(email);
 
     return redirect("/overview");
   } catch (error) {
@@ -52,7 +52,7 @@ export async function signupAction({ request }: ActionFunctionArgs) {
       "signup"
     );
 
-    useAuthStore.getState().setIsAuthenticated(true);
+    useAuthStore.getState().setUserEmail(email);
 
     return redirect("/overview");
   } catch (error) {
