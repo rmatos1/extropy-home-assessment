@@ -20,6 +20,22 @@ export type ExpenseRecord = Expense & {
   updatedAt: string;
 };
 
+export type GetExpensesInput = {
+  userId: string;
+  startDate?: string;
+  endDate?: string;
+  categoryId?: string;
+};
+
+export type DeleteExpenseInput = {
+  expenseId: string;
+  userId: string;
+};
+
+export type UpdateExpenseInput = DeleteExpenseInput & {
+  expense: Expense;
+};
+
 export type Category = {
   id: string;
   name: string;
@@ -31,6 +47,31 @@ export type CustomCategory = Category & {
   updatedAt: string;
 };
 
+export type SpendingReportResponse = {
+  totalThisMonth: number;
+  totalThisYear: number;
+
+  monthlySpending: {
+    month: string;
+    amount: number;
+  }[];
+
+  spendingByCategory: {
+    categoryId: string;
+    amount: number;
+  }[];
+
+  recentExpenses: ExpenseResponse[];
+};
+
+export type ProfileUpdateInput = {
+  email?: string;
+  password?: string;
+};
+
 export type ExpenseResponse = Omit<ExpenseRecord, "userId">;
 
 export type CustomCategoryResponse = Omit<CustomCategory, "userId">;
+
+export type GetExpensesParams = Omit<GetExpensesInput, "userId">;
+export type UpdateExpenseParams = Omit<UpdateExpenseInput, "userId">;

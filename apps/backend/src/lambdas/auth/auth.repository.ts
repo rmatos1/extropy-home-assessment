@@ -1,4 +1,9 @@
-import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 
 import type { User } from "@extropy/shared";
 
@@ -48,4 +53,37 @@ export async function getUserById(id: string): Promise<User | undefined> {
   );
 
   return result.Item as User | undefined;
+}
+
+export async function updateUser(
+  id: string,
+  data: Partial<Pick<User, "email" | "passwordHash">>
+): Promise<void> {
+  const updateExpressions: string[] = [];
+  const expressionAttributeValues: Record<string, string> = {};
+
+  if (data.email) {
+    updateExpressions.push("email = :email");
+    expressionAttributeValues[":email"] = data.email;
+  }
+
+  if (data.passwordHash) {
+    updateExpressions.push("passwordHash = :passwordHash");
+    expressionAttributeValues[":passwordHash"] = data.passwordHash;
+  }
+
+  updateExpressions.push("updatedAt = :updatedAt");
+  expressionAttributeValues[":updatedAt"] = new Date().toISOString();
+
+  await dynamoDb.send(
+    new UpdateCommand({
+      TableName: tableName,
+      Key: {
+        id,
+      },
+      UpdateExpression: `SET ${updateExpressions.join(", ")}`,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ConditionExpression: "attribute_exists(id)",
+    })
+  );
 }

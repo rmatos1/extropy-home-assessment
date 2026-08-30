@@ -14,14 +14,27 @@ export async function api<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => null);
+    const text = await response.text();
 
-    throw new Error(error?.message ?? "An unexpected error occurred.");
+    let message = "An unexpected error occurred.";
+
+    if (text) {
+      try {
+        const error = JSON.parse(text);
+        message = error?.message ?? message;
+      } catch {
+        message = text;
+      }
+    }
+
+    throw new Error(message);
   }
 
-  if (response.status === 204) {
+  const text = await response.text();
+
+  if (!text) {
     return undefined as T;
   }
 
-  return response.json();
+  return JSON.parse(text);
 }

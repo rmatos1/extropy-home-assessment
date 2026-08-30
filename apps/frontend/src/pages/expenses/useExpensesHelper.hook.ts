@@ -1,43 +1,10 @@
 import { useState, useMemo } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { useFetcher } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import type { Expense, ExpenseResponse } from "@extropy/shared";
 
-import { currencyFormatter } from "../../helpers";
+import { expensesLoader } from "../../router/loaders";
 
-export const columns: Array<ColumnDef<typeof features, ExpenseProps>> = [
-  {
-    accessorKey: "date",
-    header: "Date",
-    cell: (info) => info.getValue<string>(),
-  },
-  {
-    accessorKey: "description",
-    header: "Description",
-    cell: (info) => info.getValue<string>(),
-  },
-  {
-    accessorKey: "category",
-    header: "Category",
-    cell: (info) => info.getValue<string>(),
-  },
-  {
-    accessorKey: "amount",
-    header: "Amount",
-    cell: (info) => {
-      const amount = info.getValue<number>();
-
-      return currencyFormatter.format(amount);
-    },
-  },
-];
-
-const initialExpenseData: Expense = {
-  date: new Date().toISOString().slice(0, 10),
-  description: "",
-  categoryId: "",
-  amount: "",
-};
+import { initialExpenseData } from "./expenses.constants";
 
 export const useExpensesHelper = () => {
   const expenseFetcher = useFetcher();
@@ -51,35 +18,7 @@ export const useExpensesHelper = () => {
     null
   );
 
-  const expenses: ExpenseResponse[] = [
-    {
-      id: "1",
-      date: "2026-08-25",
-      description: "Electricity",
-      categoryId: "bills",
-      amount: 24800,
-      createdAt: "",
-      updatedAt: "",
-    },
-    {
-      id: "2",
-      date: "2026-08-12",
-      description: "Restaurant",
-      categoryId: "food",
-      amount: 12000,
-      createdAt: "",
-      updatedAt: "",
-    },
-    {
-      id: "3",
-      date: "2026-08-05",
-      description: "Groceries",
-      categoryId: "food",
-      amount: 57900,
-      createdAt: "",
-      updatedAt: "",
-    },
-  ];
+  const expenses: ExpenseResponse[] = useLoaderData<typeof expensesLoader>();
 
   const isSaving = expenseFetcher.state === "submitting";
 

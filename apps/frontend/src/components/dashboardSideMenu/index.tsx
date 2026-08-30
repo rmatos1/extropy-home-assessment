@@ -1,10 +1,13 @@
 import { NavLink } from "react-router";
 
-import { dashboardNavigation } from "../../constants";
 import {
   ArrowTurnDownIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  FolderIcon,
+  GraphIcon,
+  UserIcon,
+  WalletIcon,
 } from "../../icons";
 
 type DashboardSideMenuProps = {
@@ -12,6 +15,29 @@ type DashboardSideMenuProps = {
   onToggleCollapse: () => void;
   onClickLogout: () => void;
 };
+
+const dashboardNavigation = [
+  {
+    name: "Overview",
+    to: "/overview",
+    icon: GraphIcon,
+  },
+  {
+    name: "Expenses",
+    to: "/expenses",
+    icon: WalletIcon,
+  },
+  {
+    name: "Categories",
+    to: "/categories",
+    icon: FolderIcon,
+  },
+  {
+    name: "Profile",
+    to: "/profile",
+    icon: UserIcon,
+  },
+];
 
 export function DashboardSideMenu({
   isCollapsed,

@@ -53,17 +53,16 @@ export function createSessionCookie(token: string, maxAge?: number): string {
     `${SESSION_COOKIE_NAME}=${token}`,
     "HttpOnly",
     "Secure",
-    "SameSite=Lax",
+    "SameSite=None",
     "Path=/",
     ...(maxAge !== undefined ? [`Max-Age=${maxAge}`] : []),
   ].join("; ");
 }
 
-export function getTokenFromCookie(cookieHeader: string | undefined): string {
-  const sessionCookie = cookieHeader
-    ?.split(";")
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith(`${SESSION_COOKIE_NAME}=`));
+export function getTokenFromCookie(cookies: string[] | undefined): string {
+  const sessionCookie = cookies?.find((cookie) =>
+    cookie.startsWith(`${SESSION_COOKIE_NAME}=`)
+  );
 
   if (!sessionCookie) {
     throw new Error("UNAUTHORIZED");
@@ -72,20 +71,24 @@ export function getTokenFromCookie(cookieHeader: string | undefined): string {
   return sessionCookie.slice(`${SESSION_COOKIE_NAME}=`.length);
 }
 
-export function getAuthenticatedUserId(
-  cookieHeader: string | undefined
-): string {
-  const token = getTokenFromCookie(cookieHeader);
+export async function getAuthenticatedUserId(
+  cookies: string[] | undefined
+): Promise<string> {
+  const token = getTokenFromCookie(cookies);
 
-  const payload = jwt.verify(token, getJwtSecret());
+  try {
+    const payload = jwt.verify(token, getJwtSecret());
 
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    typeof payload.sub !== "string"
-  ) {
+    if (
+      typeof payload !== "object" ||
+      payload === null ||
+      typeof payload.sub !== "string"
+    ) {
+      throw new Error("UNAUTHORIZED");
+    }
+
+    return payload.sub;
+  } catch {
     throw new Error("UNAUTHORIZED");
   }
-
-  return payload.sub;
 }

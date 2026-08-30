@@ -5,25 +5,24 @@ import { InputGroup } from "../inputGroup";
 import { EyeIcon, EyeSlashIcon } from "../../icons";
 
 type PasswordInputProps = {
+  label?: string;
   autoCompleteType?: "current-password" | "new-password";
-  isRequired?: boolean;
 };
 
 export const PasswordInput = ({
+  label = "Password",
   autoCompleteType = "current-password",
-  isRequired = true,
 }: PasswordInputProps) => {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
     <InputGroup
-      label="Password"
+      label={label}
       name="password"
       type={showPassword ? "text" : "password"}
       autoCompleteType={autoCompleteType}
       minLength={MIN_PASSWORD_LENGTH}
       maxLength={MAX_PASSWORD_LENGTH}
-      isRequired={isRequired}
       endAdornment={
         <button
           className="absolute top-7.5 right-0.5 p-1.5"

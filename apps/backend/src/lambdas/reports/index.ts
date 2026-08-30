@@ -5,16 +5,7 @@ import { getAuthenticatedUserId } from "../auth/auth.helpers";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
-    const userId = getAuthenticatedUserId(event.headers.authorization);
-
-    if (!userId) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({
-          message: "Unauthorized",
-        }),
-      };
-    }
+    const userId = await getAuthenticatedUserId(event.cookies);
 
     if (event.routeKey === "GET /spending-report") {
       const report = await getSpendingReport(userId);
@@ -34,15 +25,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   } catch (error) {
     console.error(error);
 
-    if (error instanceof Error) {
-      if (error.message === "UNAUTHORIZED") {
-        return {
-          statusCode: 401,
-          body: JSON.stringify({
-            message: "Unauthorized",
-          }),
-        };
-      }
+    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({
+          message: "Unauthorized",
+        }),
+      };
     }
 
     return {

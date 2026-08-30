@@ -1,8 +1,8 @@
 import { currencyFormatter } from "../../../../helpers";
 
-type SpendingCardProps = {
-  title: string;
-  value: number;
+type SpendingSummaryProps = {
+  totalThisMonth: number;
+  totalThisYear: number;
 };
 
 function SpendingCard({ title, value }: SpendingCardProps) {
@@ -16,12 +16,15 @@ function SpendingCard({ title, value }: SpendingCardProps) {
   );
 }
 
-export function SpendingSummary() {
+export function SpendingSummary({
+  totalThisMonth,
+  totalThisYear,
+}: SpendingSummaryProps) {
   return (
-    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <SpendingCard title="This month" value={1435} />
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <SpendingCard title="This month" value={totalThisMonth} />
 
-      <SpendingCard title="This year" value={12850} />
-    </section>
+      <SpendingCard title="This year" value={totalThisYear} />
+    </div>
   );
 }

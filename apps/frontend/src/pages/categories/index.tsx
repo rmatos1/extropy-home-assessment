@@ -1,27 +1,24 @@
 import { ActionButton, DashboardTable } from "../../components";
 
-import { columns, useCategoriesHelper } from "./useCategoriesHelper.hook";
+import { useCategoriesHelper } from "./useCategoriesHelper.hook";
 import { FormRow } from "./categoriesComponents";
+import { columns } from "./categories.constants";
 
 export function Categories() {
   const {
+    categoriesFormRef,
     isAdding,
-    newCategoryName,
-    customCategories,
+    categories,
     isSaving,
     onClickAddCategory,
-    onChangeNewCategory,
     onCancelCategoryForm,
-    onSubmitCategory,
   } = useCategoriesHelper();
 
   function renderFormRow() {
     return (
       <FormRow
-        categoryName={newCategoryName}
+        ref={categoriesFormRef}
         isSaving={isSaving}
-        onChange={onChangeNewCategory}
-        onSave={onSubmitCategory}
         onCancel={onCancelCategoryForm}
       />
     );
@@ -38,11 +35,11 @@ export function Categories() {
         />
       </div>
 
-      <div className="overflow-x-auto w-lg rounded-lg border border-gray-200 mx-auto">
+      <div className="overflow-x-auto w-sm rounded-lg border border-gray-200 mx-auto">
         <DashboardTable
           tableKey="categories-table"
           columns={columns}
-          data={customCategories}
+          data={categories}
           isAdding={isAdding}
           renderFormRow={renderFormRow}
         />

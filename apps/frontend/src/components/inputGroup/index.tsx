@@ -2,9 +2,9 @@ type InputGroupProps = {
   label?: string;
   name: string;
   type: "text" | "email" | "password" | "number" | "date";
+  defaultValue?: string;
   value?: string;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  isRequired?: boolean;
   autoCompleteType?: string;
   endAdornment?: React.ReactNode;
   minLength?: number;
@@ -26,9 +26,9 @@ export const InputGroup = ({
   label,
   name,
   type,
+  defaultValue,
   value,
   onChange,
-  isRequired,
   autoCompleteType,
   endAdornment,
   minLength,
@@ -51,9 +51,10 @@ export const InputGroup = ({
         name={name}
         type={type}
         value={value}
+        defaultValue={defaultValue}
         onChange={onChange}
         autoComplete={autoCompleteType}
-        required={isRequired}
+        required
         minLength={minLength}
         maxLength={maxLength}
         inputMode={inputMode}

@@ -1,10 +1,30 @@
 import { createBrowserRouter, Navigate } from "react-router";
 
 import { AuthLayout, DashboardLayout } from "../layouts";
-import { Login, Signup } from "../pages";
-import { dashboardNavigation } from "../constants";
-import { loginAction, signupAction } from "./actions/auth";
-import { currentUserLoader } from "./loaders/auth";
+import {
+  Login,
+  Signup,
+  Categories,
+  Expenses,
+  Overview,
+  Profile,
+} from "../pages";
+import {
+  loginAction,
+  signupAction,
+  updateProfileAction,
+  logoutAction,
+  createExpenseAction,
+  updateExpenseAction,
+  createCategoryAction,
+} from "./actions";
+import {
+  requireAuthLoader,
+  redirectAuthenticatedLoader,
+  categoriesLoader,
+  expensesLoader,
+  overviewLoader,
+} from "./loaders";
 
 export const router = createBrowserRouter([
   {
@@ -18,25 +38,57 @@ export const router = createBrowserRouter([
         path: "/login",
         Component: Login,
         action: loginAction,
-        //loader: () => currentUserLoader("/overview"),
+        loader: redirectAuthenticatedLoader,
       },
       {
         path: "/signup",
         Component: Signup,
         action: signupAction,
-        //loader: () => currentUserLoader("/overview"),
+        loader: redirectAuthenticatedLoader,
       },
     ],
   },
   {
     element: <DashboardLayout />,
-    //loader: () => currentUserLoader("/login"),
-    children: dashboardNavigation.map(({ to, Component, name }) => ({
-      path: to,
-      Component,
-      handle: {
-        name,
+    loader: requireAuthLoader,
+    children: [
+      {
+        path: "/overview",
+        Component: Overview,
+        loader: overviewLoader,
+        handle: {
+          name: "Overview",
+        },
       },
-    })),
+      {
+        path: "/expenses",
+        Component: Expenses,
+        loader: expensesLoader,
+        handle: {
+          name: "Expenses",
+        },
+      },
+      {
+        path: "/categories",
+        Component: Categories,
+        loader: categoriesLoader,
+        action: createCategoryAction,
+        handle: {
+          name: "Categories",
+        },
+      },
+      {
+        path: "/profile",
+        Component: Profile,
+        action: updateProfileAction,
+        handle: {
+          name: "Profile",
+        },
+      },
+      {
+        path: "/logout",
+        action: logoutAction,
+      },
+    ],
   },
 ]);

@@ -1,17 +1,49 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 
-import { getCurrentUser, login, signup } from "./auth.services";
-import { createSessionCookie } from "./auth.helpers";
+import { getCurrentUser, login, signup, updateProfile } from "./auth.services";
+import { createSessionCookie, getAuthenticatedUserId } from "./auth.helpers";
 import { ERROR_MESSAGES } from "./auth.constants";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
     if (event.routeKey === "GET /auth/me") {
-      const user = await getCurrentUser(event.headers.cookie);
+      const user = await getCurrentUser(event.cookies);
 
       return {
         statusCode: 200,
         body: JSON.stringify(user),
+      };
+    }
+
+    if (event.routeKey === "PATCH /auth/me") {
+      if (!event.body) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            message: "Request body is required",
+          }),
+        };
+      }
+
+      let body;
+
+      try {
+        body = JSON.parse(event.body);
+      } catch {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            message: "Invalid JSON body",
+          }),
+        };
+      }
+
+      const userId = await getAuthenticatedUserId(event.cookies);
+      const result = await updateProfile(userId, body);
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify(result),
       };
     }
 

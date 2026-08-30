@@ -1,5 +1,6 @@
+import type { ExpenseResponse } from "@extropy/shared";
+
 import type { SpendingReport } from "./reports.types";
-import { sortMonthsDescending } from "./reports.helpers";
 import { getExpenses } from "../expenses/expenses.services";
 
 export async function getSpendingReport(
@@ -9,45 +10,86 @@ export async function getSpendingReport(
     userId,
   });
 
-  const monthlyTotals: Record<
+  if (expenses.length === 0) {
+    return {
+      totalThisMonth: 0,
+      totalThisYear: 0,
+      monthlySpending: [],
+      spendingByCategory: [],
+      recentExpenses: [],
+    };
+  }
+
+  const now = new Date();
+
+  const currentYear = now.getFullYear();
+  const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+
+  const currentMonthKey = `${currentYear}-${currentMonth}`;
+
+  const currentYearPrefix = `${currentYear}-`;
+
+  let totalThisMonth = 0;
+  let totalThisYear = 0;
+
+  const monthlyTotals: Record<string, number> = {};
+  const categoryTotals: Record<
     string,
     {
-      total: number;
-      categories: Record<string, number>;
+      categoryName: string;
+      amount: number;
     }
   > = {};
 
   for (const expense of expenses) {
-    const { amount, categoryId, date } = expense;
+    const { amount, categoryId, categoryName, date } = expense;
 
     const month = date.slice(0, 7);
 
-    if (!monthlyTotals?.[month]) {
-      monthlyTotals[month] = {
-        total: 0,
-        categories: {},
+    monthlyTotals[month] = (monthlyTotals[month] ?? 0) + amount;
+
+    if (date.startsWith(currentMonthKey)) {
+      totalThisMonth += amount;
+    }
+
+    if (date.startsWith(currentYearPrefix)) {
+      totalThisYear += amount;
+    }
+
+    if (!categoryTotals[categoryId]) {
+      categoryTotals[categoryId] = {
+        categoryName,
+        amount: 0,
       };
     }
 
-    monthlyTotals[month].total += amount;
-
-    if (!monthlyTotals[month].categories?.[categoryId]) {
-      monthlyTotals[month].categories[categoryId] = 0;
-    }
-
-    monthlyTotals[month].categories[categoryId] += amount;
+    categoryTotals[categoryId].amount += amount;
   }
 
-  return Object.entries(monthlyTotals)
-    .sort(sortMonthsDescending)
-    .map(([month, data]) => ({
+  const monthlySpending = Object.entries(monthlyTotals)
+    .sort(([monthA], [monthB]) => monthB.localeCompare(monthA))
+    .map(([month, amount]) => ({
       month,
-      total: data.total,
-      categories: Object.entries(data.categories).map(
-        ([categoryId, total]) => ({
-          categoryId,
-          total,
-        })
-      ),
+      amount,
     }));
+
+  const spendingByCategory = Object.entries(categoryTotals).map(
+    ([categoryId, data]) => ({
+      categoryId,
+      categoryName: data.categoryName,
+      amount: data.amount,
+    })
+  );
+
+  const recentExpenses = [...expenses]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 5);
+
+  return {
+    totalThisMonth,
+    totalThisYear,
+    monthlySpending,
+    spendingByCategory,
+    recentExpenses,
+  };
 }

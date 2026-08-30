@@ -3,10 +3,100 @@ const serverlessConfiguration = {
 
   frameworkVersion: "4",
 
+  plugins: ["serverless-offline"],
+
   provider: {
     name: "aws",
     runtime: "nodejs22.x",
     region: "us-east-1",
+
+    environment: {
+      USERS_TABLE_NAME: "extropy-users",
+      EXPENSES_TABLE_NAME: "extropy-expenses",
+      CATEGORIES_TABLE_NAME: "extropy-categories",
+      JWT_SECRET: "extropy_S3cret_@2",
+    },
+
+    httpApi: {
+      cors: {
+        allowedOrigins: ["http://localhost:5173"],
+        allowedHeaders: ["Content-Type"],
+        allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allowCredentials: true,
+      },
+    },
+
+    iam: {
+      role: {
+        statements: [
+          {
+            Effect: "Allow",
+            Action: [
+              "dynamodb:GetItem",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+              "dynamodb:DeleteItem",
+              "dynamodb:Query",
+            ],
+            Resource: [
+              {
+                "Fn::GetAtt": ["UsersTable", "Arn"],
+              },
+              {
+                "Fn::Join": [
+                  "/",
+                  [
+                    {
+                      "Fn::GetAtt": ["UsersTable", "Arn"],
+                    },
+                    "index",
+                    "EmailIndex",
+                  ],
+                ],
+              },
+
+              {
+                "Fn::GetAtt": ["ExpensesTable", "Arn"],
+              },
+              {
+                "Fn::Join": [
+                  "/",
+                  [
+                    {
+                      "Fn::GetAtt": ["ExpensesTable", "Arn"],
+                    },
+                    "index",
+                    "UserDateIndex",
+                  ],
+                ],
+              },
+
+              {
+                "Fn::GetAtt": ["CategoriesTable", "Arn"],
+              },
+              {
+                "Fn::Join": [
+                  "/",
+                  [
+                    {
+                      "Fn::GetAtt": ["CategoriesTable", "Arn"],
+                    },
+                    "index",
+                    "UserIndex",
+                  ],
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    },
+  },
+
+  build: {
+    esbuild: {
+      external: ["jsonwebtoken"],
+    },
   },
 
   functions: {
@@ -21,6 +111,12 @@ const serverlessConfiguration = {
         },
         {
           httpApi: {
+            method: "PATCH",
+            path: "/auth/me",
+          },
+        },
+        {
+          httpApi: {
             method: "POST",
             path: "/auth/signup",
           },
@@ -29,6 +125,72 @@ const serverlessConfiguration = {
           httpApi: {
             method: "POST",
             path: "/auth/login",
+          },
+        },
+        {
+          httpApi: {
+            method: "POST",
+            path: "/auth/logout",
+          },
+        },
+      ],
+    },
+
+    expenses: {
+      handler: "src/lambdas/expenses/index.handler",
+      events: [
+        {
+          httpApi: {
+            method: "GET",
+            path: "/expenses",
+          },
+        },
+        {
+          httpApi: {
+            method: "POST",
+            path: "/expenses",
+          },
+        },
+        {
+          httpApi: {
+            method: "PUT",
+            path: "/expenses/{id}",
+          },
+        },
+        {
+          httpApi: {
+            method: "DELETE",
+            path: "/expenses/{id}",
+          },
+        },
+      ],
+    },
+
+    categories: {
+      handler: "src/lambdas/categories/index.handler",
+      events: [
+        {
+          httpApi: {
+            method: "GET",
+            path: "/categories",
+          },
+        },
+        {
+          httpApi: {
+            method: "POST",
+            path: "/categories",
+          },
+        },
+      ],
+    },
+
+    spendingReport: {
+      handler: "src/lambdas/reports/index.handler",
+      events: [
+        {
+          httpApi: {
+            method: "GET",
+            path: "/spending-report",
           },
         },
       ],

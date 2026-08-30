@@ -1,4 +1,5 @@
 import { Outlet } from "react-router";
+import { Toaster } from "react-hot-toast";
 
 export function AuthLayout() {
   return (
@@ -6,6 +7,8 @@ export function AuthLayout() {
       <section className="bg-white w-md m-2 rounded-b-xl shadow-sm">
         <Outlet />
       </section>
+
+      <Toaster position="top-right" />
     </main>
   );
 }

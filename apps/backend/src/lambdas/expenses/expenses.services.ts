@@ -1,4 +1,9 @@
-import type { Expense, ExpenseResponse } from "@extropy/shared";
+import type {
+  Expense,
+  ExpenseResponse,
+  GetExpensesInput,
+  UpdateExpenseInput,
+} from "@extropy/shared";
 
 import {
   createExpenseRecord,
@@ -12,15 +17,10 @@ import {
   validateCategoryId,
   validateDate,
 } from "./expenses.helpers";
-import type {
-  ExpenseInput,
-  GetExpensesInput,
-  UpdateExpenseInput,
-} from "./expenses.types";
 
 export async function createExpense(
   userId: string,
-  input: ExpenseInput
+  input: Expense
 ): Promise<ExpenseResponse> {
   const description = input.description.trim();
   const categoryId = input.categoryId.trim();

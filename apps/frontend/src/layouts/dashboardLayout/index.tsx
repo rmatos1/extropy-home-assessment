@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Outlet, useMatches } from "react-router";
+import { Outlet, useMatches, useFetcher } from "react-router";
+import { Toaster } from "react-hot-toast";
 
 import { DashboardSideMenu } from "../../components";
 import { LogoutModal } from "../..//modals";
@@ -10,6 +11,7 @@ type RouteHandle = {
 
 export function DashboardLayout() {
   const matches = useMatches();
+  const logoutFetcher = useFetcher();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -33,7 +35,10 @@ export function DashboardLayout() {
   };
 
   const onConfirmLogout = () => {
-    return;
+    logoutFetcher.submit(null, {
+      method: "post",
+      action: "/logout",
+    });
   };
 
   return (
@@ -62,6 +67,8 @@ export function DashboardLayout() {
 
           <Outlet />
         </section>
+
+        <Toaster position="top-right" />
       </main>
     </>
   );

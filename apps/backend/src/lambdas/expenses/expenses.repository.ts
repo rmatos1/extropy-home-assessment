@@ -5,11 +5,15 @@ import {
   DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
 
-import type { ExpenseRecord } from "@extropy/shared";
+import type {
+  ExpenseRecord,
+  DeleteExpenseInput,
+  GetExpensesInput,
+  UpdateExpenseInput,
+} from "@extropy/shared";
 
 import { dynamoDb } from "../../dynamodb";
 import { USER_DATE_INDEX_NAME } from "./expenses.constants";
-import { ExpenseUserIdDatesInput, UpdateExpenseInput } from "./expenses.types";
 
 const tableName = process.env.EXPENSES_TABLE_NAME;
 
@@ -32,26 +36,33 @@ export async function getExpensesByUserId({
   userId,
   startDate,
   endDate,
-}: ExpenseUserIdDatesInput): Promise<ExpenseRecord[]> {
+}: GetExpensesInput): Promise<ExpenseRecord[]> {
   let keyConditionExpression = "userId = :userId";
 
   const expressionAttributeValues: Record<string, string> = {
     ":userId": userId,
   };
 
-  if (startDate && endDate) {
-    keyConditionExpression += " AND #date BETWEEN :startDate AND :endDate";
+  const expressionAttributeNames: Record<string, string> = {};
 
-    expressionAttributeValues[":startDate"] = startDate;
-    expressionAttributeValues[":endDate"] = endDate;
-  } else if (startDate) {
-    keyConditionExpression += " AND #date >= :startDate";
+  if (startDate || endDate) {
+    expressionAttributeNames["#date"] = "date";
 
-    expressionAttributeValues[":startDate"] = startDate;
-  } else if (endDate) {
-    keyConditionExpression += " AND #date <= :endDate";
+    if (startDate) {
+      expressionAttributeValues[":startDate"] = startDate;
 
-    expressionAttributeValues[":endDate"] = endDate;
+      if (endDate) {
+        keyConditionExpression += " AND #date BETWEEN :startDate AND :endDate";
+
+        expressionAttributeValues[":endDate"] = endDate;
+      } else {
+        keyConditionExpression += " AND #date >= :startDate";
+      }
+    } else {
+      keyConditionExpression += " AND #date <= :endDate";
+
+      expressionAttributeValues[":endDate"] = endDate;
+    }
   }
 
   const result = await dynamoDb.send(
@@ -59,10 +70,10 @@ export async function getExpensesByUserId({
       TableName: tableName,
       IndexName: USER_DATE_INDEX_NAME,
       KeyConditionExpression: keyConditionExpression,
-      ExpressionAttributeNames: {
-        "#date": "date",
-      },
       ExpressionAttributeValues: expressionAttributeValues,
+      ...(Object.keys(expressionAttributeNames).length > 0
+        ? { ExpressionAttributeNames: expressionAttributeNames }
+        : {}),
     })
   );
 
@@ -101,10 +112,7 @@ export async function updateExpenseRecord({
 export async function deleteExpenseRecord({
   expenseId,
   userId,
-}: {
-  expenseId: string;
-  userId: string;
-}): Promise<void> {
+}: DeleteExpenseInput): Promise<void> {
   await dynamoDb.send(
     new DeleteCommand({
       TableName: tableName,

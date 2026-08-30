@@ -11,7 +11,7 @@ import { getAuthenticatedUserId } from "../auth/auth.helpers";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
-    const userId = getAuthenticatedUserId(event.headers.authorization);
+    const userId = await getAuthenticatedUserId(event.cookies);
 
     if (!userId) {
       return {

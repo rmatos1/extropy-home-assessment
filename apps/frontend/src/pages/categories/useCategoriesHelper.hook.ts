@@ -1,63 +1,36 @@
-import { useState } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { useFetcher } from "react-router";
-import type { Category, CategoryResponse } from "@extropy/shared";
+import { useEffect, useState, useRef, HTMLFormElement } from "react";
+import { useNavigation, useLoaderData, useActionData } from "react-router";
+import toast from "react-hot-toast";
 
-export const columns: Array<ColumnDef<typeof features, ExpenseProps>> = [
-  {
-    accessorKey: "name",
-    header: "Name",
-    cell: (info) => info.getValue<string>(),
-  },
-];
+import type { Category } from "@extropy/shared";
+
+import { categoriesLoader } from "../../router/loaders";
 
 export const useCategoriesHelper = () => {
-  const categoryFetcher = useFetcher();
+  const categoriesFormRef = useRef<HTMLFormElement>(null);
+  const navigation = useNavigation();
+  const actionData = useActionData<typeof categoriesAction>();
 
   const [isAdding, setIsAdding] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState<string>("");
 
-  const customCategories: CategoryResponse[] = [
-    {
-      id: "1",
-      name: "Bills",
-      createdAt: "",
-      updatedAt: "",
-    },
-    {
-      id: "2",
-      name: "Food",
-      createdAt: "",
-      updatedAt: "",
-    },
-    {
-      id: "3",
-      name: "Enternaiment",
-      createdAt: "",
-      updatedAt: "",
-    },
-  ];
+  const categories: Category[] = useLoaderData<typeof categoriesLoader>();
 
-  const isSaving = categoryFetcher.state === "submitting";
+  const isSaving = navigation.state === "submitting";
+
+  useEffect(() => {
+    if (actionData?.error) {
+      toast.error(actionData.error);
+      return;
+    }
+
+    if (actionData?.success) {
+      toast.success(actionData.message);
+      categoriesFormRef.current?.reset();
+    }
+  }, [actionData]);
 
   const onClickAddCategory = () => {
     setIsAdding(true);
-  };
-
-  const onChangeNewCategory = (value: string) => {
-    setNewCategoryName(value);
-  };
-
-  const onSubmitCategory = () => {
-    categoryFetcher.submit(
-      {
-        intent: "create",
-        name: newCategoryName,
-      },
-      {
-        method: "post",
-      }
-    );
   };
 
   const onCancelCategoryForm = () => {
@@ -65,13 +38,11 @@ export const useCategoriesHelper = () => {
   };
 
   return {
+    categoriesFormRef,
     isAdding,
-    newCategoryName,
-    customCategories,
+    categories,
     isSaving,
     onClickAddCategory,
-    onChangeNewCategory,
     onCancelCategoryForm,
-    onSubmitCategory,
   };
 };

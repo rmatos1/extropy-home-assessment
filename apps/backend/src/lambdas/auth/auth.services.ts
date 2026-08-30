@@ -1,9 +1,14 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-import type { User } from "@extropy/shared";
+import type { User, ProfileUpdateInput } from "@extropy/shared";
 
-import { createUser, getUserByEmail, getUserById } from "./auth.repository";
+import {
+  createUser,
+  getUserByEmail,
+  getUserById,
+  updateUser,
+} from "./auth.repository";
 import { BCRYPT_SALT_ROUNDS } from "./auth.constants";
 import type { SignupInput, LoginInput } from "./auth.types";
 import {
@@ -65,10 +70,8 @@ export async function login(input: LoginInput): Promise<string> {
   return generateToken(user);
 }
 
-export async function getCurrentUser(
-  cookieHeader: string | undefined
-): Promise<Pick<User, "id" | "email">> {
-  const userId = getAuthenticatedUserId(cookieHeader);
+export async function getCurrentUser(cookies: string[] | undefined) {
+  const userId = await getAuthenticatedUserId(cookies);
 
   const user = await getUserById(userId);
 
@@ -80,4 +83,52 @@ export async function getCurrentUser(
     id: user.id,
     email: user.email,
   };
+}
+
+export async function updateProfile(
+  userId: string,
+  input: ProfileUpdateInput
+): Promise<("email" | "password")[]> {
+  const data: {
+    email?: string;
+    passwordHash?: string;
+  } = {};
+  const updatedFields: ("email" | "password")[] = [];
+
+  if (input.email) {
+    const email = input.email.trim().toLowerCase();
+
+    validateEmail(email);
+
+    const currentUser = await getUserById(userId);
+
+    if (!currentUser) {
+      throw new Error("UNAUTHORIZED");
+    }
+
+    if (email !== currentUser.email) {
+      const existingUser = await getUserByEmail(email);
+
+      if (existingUser) {
+        throw new Error("USER_EMAIL_ALREADY_EXISTS");
+      }
+
+      data.email = email;
+      updatedFields.push("email");
+    }
+  }
+
+  if (input.password) {
+    validatePassword(input.password);
+
+    data.passwordHash = await bcrypt.hash(input.password, BCRYPT_SALT_ROUNDS);
+
+    updatedFields.push("password");
+  }
+
+  if (updatedFields.length > 0) {
+    await updateUser(userId, data);
+  }
+
+  return updatedFields;
 }

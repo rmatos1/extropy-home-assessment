@@ -1,6 +1,12 @@
+import type { ExpenseResponse } from "@extropy/shared";
+
 import { currencyFormatter } from "../../../../helpers";
 
-export function RecentExpenses() {
+type RecentExpensesProps = {
+  expenses: ExpenseResponse[];
+};
+
+export function RecentExpenses({ expenses }: RecentExpensesProps) {
   return (
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <h3 className="text-lg font-semibold text-gray-900">Recent expenses</h3>
@@ -12,9 +18,11 @@ export function RecentExpenses() {
               <th className="px-2 py-3 text-left text-sm font-medium text-gray-500">
                 Date
               </th>
+
               <th className="px-2 py-3 text-left text-sm font-medium text-gray-500">
                 Expense
               </th>
+
               <th className="px-2 py-3 text-right text-sm font-medium text-gray-500">
                 Amount
               </th>
@@ -22,29 +30,32 @@ export function RecentExpenses() {
           </thead>
 
           <tbody>
-            <tr className="border-b border-gray-100">
-              <td className="px-2 py-3 text-sm text-gray-700">08/25/2026</td>
-              <td className="px-2 py-3 text-sm text-gray-700">Bills</td>
-              <td className="px-2 py-3 text-right text-sm font-medium text-gray-900">
-                {currencyFormatter.format(248)}
-              </td>
-            </tr>
+            {expenses.length > 0 ? (
+              expenses.map((item: ExpenseResponse) => (
+                <tr className="border-b border-gray-100" key={item.id}>
+                  <td className="px-2 py-3 text-sm text-gray-700">
+                    {item.date}
+                  </td>
 
-            <tr className="border-b border-gray-100">
-              <td className="px-2 py-3 text-sm text-gray-700">08/12/2026</td>
-              <td className="px-2 py-3 text-sm text-gray-700">Restaurant</td>
-              <td className="px-2 py-3 text-right text-sm font-medium text-gray-900">
-                {currencyFormatter.format(120)}
-              </td>
-            </tr>
+                  <td className="px-2 py-3 text-sm text-gray-700">
+                    {item.categoryName}
+                  </td>
 
-            <tr>
-              <td className="px-2 py-3 text-sm text-gray-700">08/05/2026</td>
-              <td className="px-2 py-3 text-sm text-gray-700">Groceries</td>
-              <td className="px-2 py-3 text-right text-sm font-medium text-gray-900">
-                {currencyFormatter.format(579)}
-              </td>
-            </tr>
+                  <td className="px-2 py-3 text-right text-sm font-medium text-gray-900">
+                    {currencyFormatter.format(item.amount)}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  className="px-2 py-3 text-center text-sm text-gray-500"
+                  colSpan={3}
+                >
+                  There aren't any recent expenses.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

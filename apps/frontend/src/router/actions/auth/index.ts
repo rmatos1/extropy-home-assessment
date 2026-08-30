@@ -1,7 +1,7 @@
 import { redirect, type ActionFunctionArgs } from "react-router";
 
-import { auth } from "../../services";
-import { useAuthStore } from "../../store";
+import { auth, updateProfile, logout } from "../../../services";
+import { useAuthStore } from "../../../store";
 
 async function getAuthData(req: Request) {
   const formData = await req.formData();
@@ -64,6 +64,51 @@ export async function signupAction({ request }: ActionFunctionArgs) {
 
     return {
       error: "An unexpected error occurred.",
+    };
+  }
+}
+
+export async function updateProfileAction({ request }: ActionFunctionArgs) {
+  const { email, password } = await getAuthData(request);
+
+  const data = email ? { email } : { password };
+
+  try {
+    const updatedFields = await updateProfile(data);
+
+    if (updatedFields.includes("email")) {
+      useAuthStore.getState().setUserEmail(email);
+    }
+
+    if (updatedFields.length === 0) {
+      throw new Error("No changes were made.");
+    }
+
+    return {
+      success: true,
+      updated: updatedFields[0],
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred.",
+    };
+  }
+}
+
+export async function logoutAction() {
+  try {
+    await logout();
+
+    return redirect("/login");
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred.",
     };
   }
 }

@@ -2,9 +2,10 @@ import type { Expense } from "@extropy/shared";
 
 import { ActionButton, DashboardTable } from "../../components";
 import { DeleteExpenseModal } from "../../modals";
-import { columns, useExpensesHelper } from "./useExpensesHelper.hook";
+import { useExpensesHelper } from "./useExpensesHelper.hook";
 
 import { ActionsRow, FormRow } from "./expensesComponents";
+import { columns } from "./expenses.constants";
 
 export function Expenses() {
   const {
@@ -78,6 +79,7 @@ export function Expenses() {
             editingRowId={selectedExpenseId}
             renderFormRow={renderFormRow}
             renderActions={renderActions}
+            emptyMsg="No expense records yet."
           />
         </div>
       </div>

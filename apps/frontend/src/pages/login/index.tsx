@@ -1,4 +1,6 @@
-import { Form } from "react-router";
+import { useEffect } from "react";
+import { Form, useActionData, useNavigation } from "react-router";
+import toast from "react-hot-toast";
 
 import {
   ActionButton,
@@ -6,8 +8,20 @@ import {
   PasswordInput,
   LinkComponent,
 } from "../../components";
+import type { loginAction } from "../../router/actions";
 
 export function Login() {
+  const actionData = useActionData<typeof loginAction>();
+  const navigation = useNavigation();
+
+  const isSubmitting = navigation.state === "submitting";
+
+  useEffect(() => {
+    if (actionData?.error) {
+      toast.error(actionData.error);
+    }
+  }, [actionData]);
+
   return (
     <>
       <div className="flex items-center justify-center bg-gradient-to-b from-blue-800 to-blue-900 w-full h-20 rounded-t-xl">
@@ -20,7 +34,6 @@ export function Login() {
           name="email"
           type="email"
           autoCompleteType="email"
-          isRequired
         />
 
         <PasswordInput />
@@ -29,6 +42,8 @@ export function Login() {
           text="Log in"
           type="submit"
           customClasses="w-full mt-1.5"
+          isProcessing={isSubmitting}
+          isDisabled={isSubmitting}
         />
 
         <p className="text-base text-center">

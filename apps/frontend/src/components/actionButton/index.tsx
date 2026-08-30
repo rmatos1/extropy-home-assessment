@@ -3,6 +3,9 @@ type ActionButtonProps = {
   onClick?: () => void;
   type?: "button" | "submit";
   isDisabled?: boolean;
+  name?: string;
+  value?: string;
+  isProcessing?: boolean;
   customClasses?: string;
 };
 
@@ -11,11 +14,16 @@ export function ActionButton({
   onClick,
   type = "button",
   isDisabled,
+  name,
+  value,
+  isProcessing = false,
   customClasses = "",
 }: ActionButtonProps) {
   return (
     <button
       type={type}
+      name={name}
+      value={value}
       className={`
         h-12 rounded-md
         bg-linear-to-b from-blue-500 to-blue-600
@@ -30,7 +38,7 @@ export function ActionButton({
       onClick={onClick}
       disabled={isDisabled}
     >
-      {text}
+      {isProcessing ? "Processing..." : text}
     </button>
   );
 }

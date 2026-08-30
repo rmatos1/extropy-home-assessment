@@ -5,7 +5,7 @@ import { getAuthenticatedUserId } from "../auth/auth.helpers";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
-    const userId = getAuthenticatedUserId(event.headers.authorization);
+    const userId = await getAuthenticatedUserId(event.cookies);
 
     if (!userId) {
       return {
@@ -35,7 +35,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         };
       }
 
-      const category = await createCategory(userId, JSON.parse(event.body));
+      const { categoryName } = JSON.parse(event.body);
+
+      const category = await createCategory(userId, categoryName);
 
       return {
         statusCode: 201,

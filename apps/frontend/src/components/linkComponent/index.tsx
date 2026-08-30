@@ -7,7 +7,7 @@ type LinkComponentProps = {
 
 export const LinkComponent = ({ to, text }: LinkComponentProps) => {
   return (
-    <NavLink to={to} className="text-blue-500 hover:text-blue-700">
+    <NavLink to={to} className="text-blue-500 hover:text-blue-700 font-bold">
       {text}
     </NavLink>
   );
