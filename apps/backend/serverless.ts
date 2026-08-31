@@ -9,18 +9,22 @@ const serverlessConfiguration = {
     name: "aws",
     runtime: "nodejs22.x",
     region: "us-east-1",
+    stage: "${opt:stage, 'dev'}",
 
     environment: {
-      USERS_TABLE_NAME: "extropy-users",
-      EXPENSES_TABLE_NAME: "extropy-expenses",
-      CATEGORIES_TABLE_NAME: "extropy-categories",
+      USERS_TABLE_NAME: "extropy-${sls:stage}-users",
+      EXPENSES_TABLE_NAME: "extropy-${sls:stage}-expenses",
+      CATEGORIES_TABLE_NAME: "extropy-${sls:stage}-categories",
+
       JWT_SECRET: "${env:JWT_SECRET}",
       OPENAI_API_KEY: "${env:OPENAI_API_KEY}",
     },
 
     httpApi: {
       cors: {
-        allowedOrigins: ["http://localhost:5173"],
+        allowedOrigins: [
+          "https://lq2y8jcsc8.execute-api.us-east-1.amazonaws.com",
+        ],
         allowedHeaders: ["Content-Type"],
         allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allowCredentials: true,
@@ -55,7 +59,6 @@ const serverlessConfiguration = {
                   ],
                 ],
               },
-
               {
                 "Fn::GetAtt": ["ExpensesTable", "Arn"],
               },
@@ -71,7 +74,6 @@ const serverlessConfiguration = {
                   ],
                 ],
               },
-
               {
                 "Fn::GetAtt": ["CategoriesTable", "Arn"],
               },
@@ -94,76 +96,25 @@ const serverlessConfiguration = {
     },
   },
 
-  build: {
-    esbuild: {
-      external: ["jsonwebtoken"],
-    },
-  },
-
   functions: {
     auth: {
       handler: "src/lambdas/auth/index.handler",
       events: [
-        {
-          httpApi: {
-            method: "GET",
-            path: "/auth/me",
-          },
-        },
-        {
-          httpApi: {
-            method: "PATCH",
-            path: "/auth/me",
-          },
-        },
-        {
-          httpApi: {
-            method: "POST",
-            path: "/auth/signup",
-          },
-        },
-        {
-          httpApi: {
-            method: "POST",
-            path: "/auth/login",
-          },
-        },
-        {
-          httpApi: {
-            method: "POST",
-            path: "/auth/logout",
-          },
-        },
+        { httpApi: { method: "GET", path: "/auth/me" } },
+        { httpApi: { method: "PATCH", path: "/auth/me" } },
+        { httpApi: { method: "POST", path: "/auth/signup" } },
+        { httpApi: { method: "POST", path: "/auth/login" } },
+        { httpApi: { method: "POST", path: "/auth/logout" } },
       ],
     },
 
     expenses: {
       handler: "src/lambdas/expenses/index.handler",
       events: [
-        {
-          httpApi: {
-            method: "GET",
-            path: "/expenses",
-          },
-        },
-        {
-          httpApi: {
-            method: "POST",
-            path: "/expenses",
-          },
-        },
-        {
-          httpApi: {
-            method: "PUT",
-            path: "/expenses/{id}",
-          },
-        },
-        {
-          httpApi: {
-            method: "DELETE",
-            path: "/expenses/{id}",
-          },
-        },
+        { httpApi: { method: "GET", path: "/expenses" } },
+        { httpApi: { method: "POST", path: "/expenses" } },
+        { httpApi: { method: "PUT", path: "/expenses/{id}" } },
+        { httpApi: { method: "DELETE", path: "/expenses/{id}" } },
         {
           httpApi: {
             method: "POST",
@@ -176,31 +127,14 @@ const serverlessConfiguration = {
     categories: {
       handler: "src/lambdas/categories/index.handler",
       events: [
-        {
-          httpApi: {
-            method: "GET",
-            path: "/categories",
-          },
-        },
-        {
-          httpApi: {
-            method: "POST",
-            path: "/categories",
-          },
-        },
+        { httpApi: { method: "GET", path: "/categories" } },
+        { httpApi: { method: "POST", path: "/categories" } },
       ],
     },
 
     spendingReport: {
       handler: "src/lambdas/reports/index.handler",
-      events: [
-        {
-          httpApi: {
-            method: "GET",
-            path: "/spending-report",
-          },
-        },
-      ],
+      events: [{ httpApi: { method: "GET", path: "/spending-report" } }],
     },
   },
 
@@ -210,8 +144,12 @@ const serverlessConfiguration = {
         Type: "AWS::DynamoDB::Table",
 
         Properties: {
-          TableName: "extropy-users",
+          TableName: "extropy-${sls:stage}-users",
           BillingMode: "PAY_PER_REQUEST",
+
+          PointInTimeRecoverySpecification: {
+            PointInTimeRecoveryEnabled: true,
+          },
 
           AttributeDefinitions: [
             {
@@ -255,8 +193,12 @@ const serverlessConfiguration = {
         Type: "AWS::DynamoDB::Table",
 
         Properties: {
-          TableName: "extropy-expenses",
+          TableName: "extropy-${sls:stage}-expenses",
           BillingMode: "PAY_PER_REQUEST",
+
+          PointInTimeRecoverySpecification: {
+            PointInTimeRecoveryEnabled: true,
+          },
 
           AttributeDefinitions: [
             {
@@ -308,8 +250,12 @@ const serverlessConfiguration = {
         Type: "AWS::DynamoDB::Table",
 
         Properties: {
-          TableName: "extropy-categories",
+          TableName: "extropy-${sls:stage}-categories",
           BillingMode: "PAY_PER_REQUEST",
+
+          PointInTimeRecoverySpecification: {
+            PointInTimeRecoveryEnabled: true,
+          },
 
           AttributeDefinitions: [
             {

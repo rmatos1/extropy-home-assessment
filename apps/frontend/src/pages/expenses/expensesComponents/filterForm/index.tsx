@@ -19,6 +19,7 @@ export function FilterForm({ categories, isDisabled }: FilterFormProps) {
   return (
     <Form
       method="get"
+      aria-label="Expense filters"
       className="
     grid
     w-full

@@ -19,7 +19,9 @@ export const useFormRowHelper = (
 
   const today = new Date().toISOString().split("T")[0];
 
-  const showSuggestion = isSuggestingCategory || suggestion?.categoryId;
+  const showSuggestion = Boolean(
+    isSuggestingCategory || suggestion?.categoryId
+  );
 
   const suggestionTextButton = useMemo(() => {
     if (!suggestion?.categoryId) {
@@ -30,7 +32,7 @@ export const useFormRowHelper = (
       categories.find((category) => category.id === suggestion.categoryId)
         ?.name ?? suggestion.categoryId;
 
-    return `Suggested: ${suggestedCategory}`;
+    return `Use ccategory ${suggestedCategory}`;
   }, [suggestion, categories]);
 
   const onChangeDescription = (event: ChangeEvent<HTMLInputElement>) => {
