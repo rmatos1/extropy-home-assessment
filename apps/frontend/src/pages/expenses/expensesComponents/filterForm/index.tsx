@@ -37,7 +37,9 @@ export function FilterForm({ categories, isDisabled }: FilterFormProps) {
           type="date"
           isRequired={false}
           value={startDate}
-          onChange={(event: ChangeEvent) => setStartDate(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            setStartDate(event.target.value)
+          }
           max={endDate || today}
         />
       </div>
@@ -49,7 +51,9 @@ export function FilterForm({ categories, isDisabled }: FilterFormProps) {
           type="date"
           isRequired={false}
           value={endDate}
-          onChange={(event: ChangeEvent) => setEndDate(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            setEndDate(event.target.value)
+          }
           min={startDate || undefined}
           max={today}
         />

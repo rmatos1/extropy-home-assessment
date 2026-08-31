@@ -8,6 +8,13 @@ import {
 
 import { overviewLoader, expensesLoader, categoriesLoader } from "../";
 
+import {
+  mockedCategories,
+  mockedExpenses,
+  mockedReport,
+  emptySummary,
+} from "./mocks";
+
 vi.mock("../../../../services", () => ({
   getSpendingReport: vi.fn(),
   getExpenses: vi.fn(),
@@ -25,41 +32,15 @@ describe("dashboard.loaders", () => {
 
   describe("overviewLoader", () => {
     it("should load categories and spending report", async () => {
-      const categories = [
-        {
-          id: "food",
-          name: "Food",
-        },
-      ];
-
-      const report = {
-        totalThisMonth: 500,
-        totalThisYear: 5000,
-        monthlySpending: [
-          {
-            month: "2026-08",
-            amount: 500,
-          },
-        ],
-        spendingByCategory: [
-          {
-            categoryId: "food",
-            categoryName: "Food",
-            amount: 500,
-          },
-        ],
-        recentExpenses: [],
-      };
-
-      getCategoriesMock.mockResolvedValue(categories);
-      getSpendingReportMock.mockResolvedValue(report);
+      getCategoriesMock.mockResolvedValue(mockedCategories);
+      getSpendingReportMock.mockResolvedValue(mockedReport);
 
       const result = await overviewLoader();
 
       expect(getCategoriesMock).toHaveBeenCalledTimes(1);
       expect(getSpendingReportMock).toHaveBeenCalledTimes(1);
 
-      expect(result).toEqual([categories, report]);
+      expect(result).toEqual([mockedCategories, mockedReport]);
     });
 
     it("should execute both requests in parallel", async () => {
@@ -84,37 +65,16 @@ describe("dashboard.loaders", () => {
       expect(getSpendingReportMock).toHaveBeenCalledTimes(1);
 
       resolveCategories([]);
-      resolveReport({
-        totalThisMonth: 0,
-        totalThisYear: 0,
-        monthlySpending: [],
-        spendingByCategory: [],
-        recentExpenses: [],
-      });
+      resolveReport(emptySummary);
 
-      await expect(loaderPromise).resolves.toEqual([
-        [],
-        {
-          totalThisMonth: 0,
-          totalThisYear: 0,
-          monthlySpending: [],
-          spendingByCategory: [],
-          recentExpenses: [],
-        },
-      ]);
+      await expect(loaderPromise).resolves.toEqual([[], emptySummary]);
     });
 
     it("should propagate an error from getCategories", async () => {
       const error = new Error("Categories error");
 
       getCategoriesMock.mockRejectedValue(error);
-      getSpendingReportMock.mockResolvedValue({
-        totalThisMonth: 0,
-        totalThisYear: 0,
-        monthlySpending: [],
-        spendingByCategory: [],
-        recentExpenses: [],
-      });
+      getSpendingReportMock.mockResolvedValue(emptySummary);
 
       await expect(overviewLoader()).rejects.toBe(error);
     });
@@ -131,26 +91,8 @@ describe("dashboard.loaders", () => {
 
   describe("expensesLoader", () => {
     it("should load categories and expenses without filters", async () => {
-      const categories = [
-        {
-          id: "food",
-          name: "Food",
-        },
-      ];
-
-      const expenses = [
-        {
-          id: "expense-1",
-          description: "Lunch",
-          amount: 100,
-          categoryId: "food",
-          categoryName: "Food",
-          date: "2026-08-30",
-        },
-      ];
-
-      getCategoriesMock.mockResolvedValue(categories);
-      getExpensesMock.mockResolvedValue(expenses);
+      getCategoriesMock.mockResolvedValue(mockedCategories);
+      getExpensesMock.mockResolvedValue(mockedExpenses);
 
       const request = new Request("http://localhost/expenses");
 
@@ -168,8 +110,8 @@ describe("dashboard.loaders", () => {
       });
 
       expect(result).toEqual({
-        categories,
-        expenses,
+        categories: mockedCategories,
+        expenses: mockedExpenses,
       });
     });
 
@@ -274,46 +216,16 @@ describe("dashboard.loaders", () => {
     });
 
     it("should return categories and expenses", async () => {
-      const categories = [
-        {
-          id: "food",
-          name: "Food",
-        },
-        {
-          id: "transport",
-          name: "Transport",
-        },
-      ];
-
-      const expenses = [
-        {
-          id: "expense-1",
-          description: "Lunch",
-          amount: 100,
-          categoryId: "food",
-          categoryName: "Food",
-          date: "2026-08-30",
-        },
-        {
-          id: "expense-2",
-          description: "Uber",
-          amount: 50,
-          categoryId: "transport",
-          categoryName: "Transport",
-          date: "2026-08-29",
-        },
-      ];
-
-      getCategoriesMock.mockResolvedValue(categories);
-      getExpensesMock.mockResolvedValue(expenses);
+      getCategoriesMock.mockResolvedValue(mockedCategories);
+      getExpensesMock.mockResolvedValue(mockedExpenses);
 
       const result = await expensesLoader({
         request: new Request("http://localhost/expenses"),
       } as never);
 
       expect(result).toEqual({
-        categories,
-        expenses,
+        categories: mockedCategories,
+        expenses: mockedExpenses,
       });
     });
 
@@ -358,23 +270,12 @@ describe("dashboard.loaders", () => {
 
   describe("categoriesLoader", () => {
     it("should return categories", async () => {
-      const categories = [
-        {
-          id: "food",
-          name: "Food",
-        },
-        {
-          id: "transport",
-          name: "Transport",
-        },
-      ];
-
-      getCategoriesMock.mockResolvedValue(categories);
+      getCategoriesMock.mockResolvedValue(mockedCategories);
 
       const result = await categoriesLoader();
 
       expect(getCategoriesMock).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(categories);
+      expect(result).toEqual(mockedCategories);
     });
 
     it("should call getCategories without arguments", async () => {

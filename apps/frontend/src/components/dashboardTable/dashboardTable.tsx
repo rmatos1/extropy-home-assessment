@@ -1,39 +1,30 @@
 import { Fragment, type ReactNode, type ChangeEvent } from "react";
+
 import {
-  createPaginatedRowModel,
-  createSortedRowModel,
-  rowPaginationFeature,
-  rowSortingFeature,
-  sortFns,
-  tableFeatures,
   useTable,
+  type ColumnDef,
+  type RowData,
+  type SortingState,
 } from "@tanstack/react-table";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import { PaginationButton } from "../paginationButton";
+import { dashboardTableFeatures } from "./dashboardTable.constants";
 
-const features = tableFeatures({
-  rowSortingFeature,
-  rowPaginationFeature,
-  sortedRowModel: createSortedRowModel(),
-  paginatedRowModel: createPaginatedRowModel(),
-  sortFns,
-});
+type TableRowData = RowData & {
+  id: string;
+};
 
-type TableProps<TData> = {
+type TableProps<TData extends TableRowData> = {
   tableKey: string;
-  columns: ColumnDef<typeof features, TData>[];
+  columns: ColumnDef<typeof dashboardTableFeatures, TData>[];
   data: TData[];
   isAdding: boolean;
-  isEditing?: boolen;
+  isEditing?: boolean;
   editingRowId?: string | null;
   renderFormRow: (row?: TData) => ReactNode;
   renderActions?: (row: TData) => ReactNode;
   emptyMsg?: string;
-  initialSorting?: {
-    id: string;
-    desc?: boolean;
-  }[];
+  initialSorting?: SortingState;
   pageSize?: number;
   isLoading?: boolean;
   customClasses?: {
@@ -44,7 +35,7 @@ type TableProps<TData> = {
   };
 };
 
-export function DashboardTable<TData>({
+export function DashboardTable<TData extends TableRowData>({
   tableKey,
   columns,
   data,
@@ -61,7 +52,7 @@ export function DashboardTable<TData>({
 }: TableProps<TData>) {
   const table = useTable({
     key: tableKey,
-    features,
+    features: dashboardTableFeatures,
     columns,
     data,
     initialState: {
@@ -199,7 +190,7 @@ export function DashboardTable<TData>({
 
                 <select
                   value={table.state.pagination.pageSize}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                     table.setPageSize(Number(event.target.value))
                   }
                   className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"

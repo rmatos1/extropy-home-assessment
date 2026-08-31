@@ -3,6 +3,7 @@ import { useActionData, useNavigation } from "react-router";
 import toast from "react-hot-toast";
 
 import { useAuthStore } from "../../store";
+import { updateProfileAction } from "../../router/actions";
 
 export function useProfileHelper() {
   const passwordFormRef = useRef<HTMLFormElement>(null);

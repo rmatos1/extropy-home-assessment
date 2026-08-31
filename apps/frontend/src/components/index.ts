@@ -1,6 +1,6 @@
 export { ActionButton } from "./actionButton";
 export { DashboardSideMenu } from "./dashboardSideMenu";
-export { DashboardTable } from "./dashboardTable";
+export * from "./dashboardTable";
 export { DefaultModal } from "./defaultModal";
 export { ErrorBoundary } from "./errorBoundary";
 export { InputGroup } from "./inputGroup";

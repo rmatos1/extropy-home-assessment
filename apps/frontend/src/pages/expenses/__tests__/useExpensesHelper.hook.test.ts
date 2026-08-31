@@ -1,12 +1,15 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-
 import toast from "react-hot-toast";
 
-import type { Category, Expense, ExpenseResponse } from "@extropy/shared";
+import type { ExpenseResponse } from "@extropy/shared";
 
 import { useExpensesHelper } from "../useExpensesHelper.hook";
 import { initialExpenseData, getColumns } from "../expenses.constants";
+import {
+  mockedCategories as categories,
+  mockedExpenses as expenses,
+} from "./mocks";
 
 const useFetcherMock = vi.fn();
 const useLoaderDataMock = vi.fn();
@@ -43,46 +46,6 @@ const toastSuccessMock = vi.mocked(toast.success);
 const getColumnsMock = vi.mocked(getColumns);
 
 describe("useExpensesHelper", () => {
-  const categories: Category[] = [
-    {
-      id: "food",
-      name: "Food",
-    },
-    {
-      id: "transport",
-      name: "Transport",
-    },
-    {
-      id: "bills",
-      name: "Bills",
-    },
-  ];
-
-  const expenses: ExpenseResponse[] = [
-    {
-      id: "expense-1",
-      userId: "user-123",
-      amount: 100,
-      description: "Lunch",
-      categoryId: "food",
-      categoryName: "Food",
-      date: "2026-08-20",
-      createdAt: "2026-08-20T10:00:00.000Z",
-      updatedAt: "2026-08-20T10:00:00.000Z",
-    },
-    {
-      id: "expense-2",
-      userId: "user-123",
-      amount: 50.5,
-      description: "Uber",
-      categoryId: "transport",
-      categoryName: "Transport",
-      date: "2026-08-25",
-      createdAt: "2026-08-25T10:00:00.000Z",
-      updatedAt: "2026-08-25T10:00:00.000Z",
-    },
-  ];
-
   beforeEach(() => {
     vi.resetAllMocks();
 
@@ -235,7 +198,7 @@ describe("useExpensesHelper", () => {
     });
 
     it("should format the amount with two decimal places when editing", () => {
-      const expense: Expense = {
+      const expense: ExpenseResponse = {
         ...expenses[1],
         amount: 50.5,
       };

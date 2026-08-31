@@ -45,7 +45,7 @@ export function MonthlySpending({ data }: MonthlySpendingProps) {
 
               <YAxis />
 
-              <Tooltip labelFormatter={formatMonth} />
+              <Tooltip labelFormatter={(value) => formatMonth(String(value))} />
 
               <Bar dataKey="amount" radius={[4, 4, 0, 0]} shape={CustomBar} />
             </BarChart>

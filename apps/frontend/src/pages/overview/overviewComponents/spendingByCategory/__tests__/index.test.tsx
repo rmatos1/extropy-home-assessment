@@ -234,14 +234,18 @@ describe("SpendingByCategory", () => {
 
     expect(
       pieProps.label({
-        categoryName: "Food",
+        payload: {
+          categoryName: "Food",
+        },
         value: 250,
       })
     ).toBe("Food: $250.00");
 
     expect(
       pieProps.label({
-        categoryName: "Transport",
+        payload: {
+          categoryName: "Transport",
+        },
         value: 100.5,
       })
     ).toBe("Transport: $100.50");

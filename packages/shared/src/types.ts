@@ -36,6 +36,10 @@ export type UpdateExpenseInput = DeleteExpenseInput & {
   expense: Expense;
 };
 
+export type ExpenseData = ExpenseResponse & {
+  categoryName: string;
+};
+
 export type SuggestCategoryInput = {
   description: string;
   categories: {

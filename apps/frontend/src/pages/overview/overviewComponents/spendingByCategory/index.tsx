@@ -22,6 +22,10 @@ type SpendingByCategoryProps = {
   categories: Category[];
 };
 
+type ChartData = SpendingByCategoryData & {
+  categoryName: string;
+};
+
 export function SpendingByCategory({
   data,
   categories,
@@ -31,9 +35,9 @@ export function SpendingByCategory({
     [categories]
   );
 
-  const chartData = useMemo(
+  const chartData: ChartData[] = useMemo(
     () =>
-      data?.map((item) => ({
+      data.map((item) => ({
         ...item,
         categoryName: categoryMap.get(item.categoryId) ?? item.categoryId,
       })),
@@ -57,8 +61,10 @@ export function SpendingByCategory({
                 cx="50%"
                 cy="50%"
                 outerRadius="70%"
-                label={({ categoryName, value }) =>
-                  `${categoryName}: ${currencyFormatter.format(Number(value))}`
+                label={({ payload, value }) =>
+                  `${payload?.categoryName}: ${currencyFormatter.format(
+                    Number(value)
+                  )}`
                 }
               >
                 {chartData.map((entry, index) => (

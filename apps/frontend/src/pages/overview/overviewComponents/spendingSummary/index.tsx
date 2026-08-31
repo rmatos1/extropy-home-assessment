@@ -5,6 +5,11 @@ type SpendingSummaryProps = {
   totalThisYear: number;
 };
 
+type SpendingCardProps = {
+  title: string;
+  value: number;
+};
+
 function SpendingCard({ title, value }: SpendingCardProps) {
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">

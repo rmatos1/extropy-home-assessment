@@ -7,14 +7,19 @@ export async function createCategoryAction({ request }: ActionFunctionArgs) {
 
   const categoryName = String(formData.get("categoryName") ?? "").trim();
 
-  const result = await createCategory(categoryName);
+  try {
+    await createCategory(categoryName);
 
-  if ("error" in result) {
-    return result;
+    return {
+      success: true,
+      message: "Category added successfully!",
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred.",
+    };
   }
-
-  return {
-    success: true,
-    message: "Category added successfully!",
-  };
 }

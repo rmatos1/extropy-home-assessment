@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useFetcher, useLoaderData, useNavigation } from "react-router";
 import toast from "react-hot-toast";
-import type { Expense, ExpenseResponse } from "@extropy/shared";
+import type { ExpenseResponse } from "@extropy/shared";
 
 import { expensesLoader } from "../../router/loaders";
 
 import { getColumns, initialExpenseData } from "./expenses.constants";
+import type { ExpenseFormData } from "./expenses.types";
 
 export const useExpensesHelper = () => {
   const expensesFetcher = useFetcher();
@@ -16,7 +17,7 @@ export const useExpensesHelper = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [expenseFormData, setExpenseFormData] =
-    useState<Expense>(initialExpenseData);
+    useState<ExpenseFormData>(initialExpenseData);
   const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(
     null
   );
@@ -33,9 +34,10 @@ export const useExpensesHelper = () => {
       return "";
     }
 
-    return expenses.find(
-      (item: ExpenseResponse) => item.id === selectedExpenseId
-    ).description;
+    return (
+      expenses?.find((item: ExpenseResponse) => item.id === selectedExpenseId)
+        ?.description ?? ""
+    );
   }, [selectedExpenseId, showDeleteModal, expenses]);
 
   const columns = useMemo(() => {
@@ -74,7 +76,7 @@ export const useExpensesHelper = () => {
     setIsAdding(true);
   };
 
-  const onClickEditExpense = (expense: Expense) => {
+  const onClickEditExpense = (expense: ExpenseResponse) => {
     const { id, date, description, categoryId, amount } = expense;
 
     setIsEditing(true);
@@ -99,7 +101,7 @@ export const useExpensesHelper = () => {
     setExpenseFormData(initialExpenseData);
   };
 
-  const onClickDeleteExpense = (expense: Expense) => {
+  const onClickDeleteExpense = (expense: ExpenseResponse) => {
     setIsEditing(false);
     setSelectedExpenseId(expense.id);
     setShowDeleteModal(true);

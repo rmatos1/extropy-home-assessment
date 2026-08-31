@@ -1,34 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { ExpenseResponse } from "@extropy/shared";
-
 import { RecentExpenses } from "../";
+import { mockedExpenses } from "./mocks";
 
 describe("RecentExpenses", () => {
-  const expenses: ExpenseResponse[] = [
-    {
-      id: "expense-1",
-      userId: "user-123",
-      amount: 125.5,
-      description: "Grocery shopping",
-      categoryId: "food",
-      categoryName: "Food",
-      date: "2026-08-30",
-    },
-    {
-      id: "expense-2",
-      userId: "user-123",
-      amount: 50,
-      description: "Uber ride",
-      categoryId: "transport",
-      categoryName: "Transport",
-      date: "2026-08-29",
-    },
-  ];
-
   it("should render the section title", () => {
-    render(<RecentExpenses expenses={expenses} />);
+    render(<RecentExpenses expenses={mockedExpenses} />);
 
     expect(
       screen.getByRole("heading", {
@@ -46,7 +24,7 @@ describe("RecentExpenses", () => {
   });
 
   it("should not render the empty state when expenses are available", () => {
-    render(<RecentExpenses expenses={expenses} />);
+    render(<RecentExpenses expenses={mockedExpenses} />);
 
     expect(
       screen.queryByText("There aren't any recent expenses.")
@@ -54,7 +32,7 @@ describe("RecentExpenses", () => {
   });
 
   it("should render the table headers", () => {
-    render(<RecentExpenses expenses={expenses} />);
+    render(<RecentExpenses expenses={mockedExpenses} />);
 
     expect(
       screen.getByRole("columnheader", { name: "Date" })
@@ -70,7 +48,7 @@ describe("RecentExpenses", () => {
   });
 
   it("should render all expenses", () => {
-    render(<RecentExpenses expenses={expenses} />);
+    render(<RecentExpenses expenses={mockedExpenses} />);
 
     expect(screen.getByText("Grocery shopping")).toBeInTheDocument();
 
@@ -78,7 +56,7 @@ describe("RecentExpenses", () => {
   });
 
   it("should format expense dates", () => {
-    render(<RecentExpenses expenses={expenses} />);
+    render(<RecentExpenses expenses={mockedExpenses} />);
 
     expect(screen.getByText("30/08/2026")).toBeInTheDocument();
 
@@ -86,7 +64,7 @@ describe("RecentExpenses", () => {
   });
 
   it("should format expense amounts as USD currency", () => {
-    render(<RecentExpenses expenses={expenses} />);
+    render(<RecentExpenses expenses={mockedExpenses} />);
 
     expect(screen.getByText("$125.50")).toBeInTheDocument();
 
@@ -94,7 +72,7 @@ describe("RecentExpenses", () => {
   });
 
   it("should render the correct number of expense rows", () => {
-    render(<RecentExpenses expenses={expenses} />);
+    render(<RecentExpenses expenses={mockedExpenses} />);
 
     const rows = screen.getAllByRole("row");
 
@@ -102,7 +80,7 @@ describe("RecentExpenses", () => {
   });
 
   it("should render the correct mobile data labels", () => {
-    render(<RecentExpenses expenses={expenses} />);
+    render(<RecentExpenses expenses={mockedExpenses} />);
 
     const groceryCell = screen.getByText("Grocery shopping").closest("td");
 
@@ -124,7 +102,7 @@ describe("RecentExpenses", () => {
   });
 
   it("should render each expense as a separate row", () => {
-    render(<RecentExpenses expenses={expenses} />);
+    render(<RecentExpenses expenses={mockedExpenses} />);
 
     const groceryRow = screen.getByText("Grocery shopping").closest("tr");
 

@@ -8,8 +8,9 @@ export const useFormRowHelper = (
   categories: Category[]
 ) => {
   const categorySelectRef = useRef<HTMLSelectElement>(null);
-  const amountRef = useRef<HTMLSelectElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
   const lastSuggestedDescriptionRef = useRef("");
+  const shouldSuggestRef = useRef(false);
 
   const [description, setDescription] = useState(defaultDescription);
   const [suggestion, setSuggestion] = useState<SuggestCategoryResponse | null>(
@@ -32,12 +33,13 @@ export const useFormRowHelper = (
       categories.find((category) => category.id === suggestion.categoryId)
         ?.name ?? suggestion.categoryId;
 
-    return `Use ccategory ${suggestedCategory}`;
+    return `Use category ${suggestedCategory}`;
   }, [suggestion, categories]);
 
   const onChangeDescription = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
 
+    shouldSuggestRef.current = true;
     setDescription(value);
     setSuggestion(null);
   };
@@ -49,13 +51,19 @@ export const useFormRowHelper = (
 
     if (categorySelectRef.current) {
       categorySelectRef.current.value = suggestion.categoryId;
-      amountRef.current.focus();
+      amountRef.current?.focus();
     }
 
     setSuggestion(null);
   };
 
   useEffect(() => {
+    if (!shouldSuggestRef.current) {
+      return;
+    }
+
+    shouldSuggestRef.current = false;
+
     const value = description.trim();
 
     if (value.length <= 3) {

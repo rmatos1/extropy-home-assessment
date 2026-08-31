@@ -1,3 +1,5 @@
+import type { ProfileUpdateInput } from "@extropy/shared";
+
 import { api } from "../api";
 import { useAuthStore, useCategoriesStore } from "../../store";
 
@@ -31,8 +33,10 @@ export async function logout(): Promise<void> {
   useCategoriesStore.getState().setCategories([]);
 }
 
-export function updateProfile(data: ProfileUpdateInput): Promise<void> {
-  return api<void>("/auth/me", {
+export function updateProfile(
+  data: ProfileUpdateInput
+): Promise<("email" | "password")[]> {
+  return api<("email" | "password")[]>("/auth/me", {
     method: "PATCH",
     body: JSON.stringify(data),
   });

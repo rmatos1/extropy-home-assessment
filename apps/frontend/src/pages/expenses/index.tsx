@@ -1,4 +1,4 @@
-import type { Expense } from "@extropy/shared";
+import type { ExpenseResponse } from "@extropy/shared";
 
 import { ActionButton, DashboardTable, DefaultModal } from "../../components";
 import { useExpensesHelper } from "./useExpensesHelper.hook";
@@ -43,7 +43,7 @@ export function Expenses() {
     );
   }
 
-  function renderActions(expense: Expense) {
+  function renderActions(expense: ExpenseResponse) {
     return (
       <ActionsRow
         isDisabled={isAdding || isProcessing}

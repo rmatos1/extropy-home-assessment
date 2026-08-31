@@ -8,6 +8,7 @@ import {
   updateProfileAction,
   logoutAction,
 } from "../";
+import { mockedUser } from "./mocks";
 
 vi.mock("../../../../services", () => ({
   auth: vi.fn(),
@@ -51,8 +52,7 @@ describe("auth actions", () => {
     it("should authenticate the user and redirect to overview", async () => {
       authMock.mockResolvedValue(undefined);
 
-      const email = "john@example.com";
-      const password = "password123";
+      const { email, password } = mockedUser;
 
       const result = await loginAction({
         request: createRequest({
@@ -100,10 +100,7 @@ describe("auth actions", () => {
       authMock.mockRejectedValue("unexpected failure");
 
       const result = await loginAction({
-        request: createRequest({
-          email: "john@example.com",
-          password: "password123",
-        }),
+        request: createRequest(mockedUser),
       } as never);
 
       expect(result).toEqual({
@@ -151,8 +148,7 @@ describe("auth actions", () => {
     it("should create the account and redirect to overview", async () => {
       authMock.mockResolvedValue(undefined);
 
-      const email = "jane@example.com";
-      const password = "password123";
+      const { email, password } = mockedUser;
 
       const result = await signupAction({
         request: createRequest({
@@ -185,10 +181,7 @@ describe("auth actions", () => {
       );
 
       const result = await signupAction({
-        request: createRequest({
-          email: "jane@example.com",
-          password: "password123",
-        }),
+        request: createRequest(mockedUser),
       } as never);
 
       expect(result).toEqual({
@@ -202,10 +195,7 @@ describe("auth actions", () => {
       authMock.mockRejectedValue("unexpected failure");
 
       const result = await signupAction({
-        request: createRequest({
-          email: "jane@example.com",
-          password: "password123",
-        }),
+        request: createRequest(mockedUser),
       } as never);
 
       expect(result).toEqual({

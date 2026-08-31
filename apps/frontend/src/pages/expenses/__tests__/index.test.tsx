@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Expenses } from "../";
 import { useExpensesHelper } from "../useExpensesHelper.hook";
+import {
+  mockedCategories as categories,
+  mockedExpenses as expenses,
+  expenseFormData,
+  columns,
+} from "./mocks";
 
 vi.mock("../useExpensesHelper.hook", () => ({
   useExpensesHelper: vi.fn(),
@@ -163,56 +169,6 @@ vi.mock("../expensesComponents", () => ({
 const useExpensesHelperMock = vi.mocked(useExpensesHelper);
 
 describe("Expenses", () => {
-  const categories = [
-    {
-      id: "food",
-      name: "Food",
-    },
-    {
-      id: "transport",
-      name: "Transport",
-    },
-  ];
-
-  const expenses = [
-    {
-      id: "expense-1",
-      userId: "user-123",
-      amount: 100,
-      description: "Lunch",
-      categoryId: "food",
-      categoryName: "Food",
-      date: "2026-08-30",
-    },
-    {
-      id: "expense-2",
-      userId: "user-123",
-      amount: 50,
-      description: "Uber",
-      categoryId: "transport",
-      categoryName: "Transport",
-      date: "2026-08-29",
-    },
-  ];
-
-  const expenseFormData = {
-    date: "2026-08-30",
-    description: "",
-    categoryId: "",
-    amount: "",
-  };
-
-  const columns = [
-    {
-      accessorKey: "date",
-      header: "Date",
-    },
-    {
-      accessorKey: "description",
-      header: "Description",
-    },
-  ];
-
   const createDefaultHelperReturn = () => ({
     expensesFetcher: {
       Form: ({
@@ -261,7 +217,7 @@ describe("Expenses", () => {
 
     expect(screen.getByTestId("filter-form")).toHaveAttribute(
       "data-category-count",
-      "2"
+      "3"
     );
   });
 
@@ -415,7 +371,7 @@ describe("Expenses", () => {
 
     expect(screen.getByTestId("form-saving")).toHaveTextContent("true");
 
-    expect(screen.getByTestId("form-category-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("form-category-count")).toHaveTextContent("3");
   });
 
   it("should render the edit form for the selected expense", () => {

@@ -1,12 +1,13 @@
-import { memo, ReactNode } from "react";
-import type { Expense, Category } from "@extropy/shared";
+import { memo, type ReactNode } from "react";
+import type { Category } from "@extropy/shared";
 
 import { InputGroup, TableFormActions } from "../../../../components";
+import type { ExpenseFormData } from "../../expenses.types";
 import { useFormRowHelper } from "./useFormRowHelper.hook";
 
 type FormRowProps = {
   form: string;
-  formData: Expense;
+  formData: ExpenseFormData;
   categories: Category[];
   isEditing: boolean;
   isSaving: boolean;

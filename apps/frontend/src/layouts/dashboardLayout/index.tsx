@@ -4,6 +4,10 @@ import { Outlet, useMatches, useFetcher } from "react-router";
 import { DashboardSideMenu, DefaultModal } from "../../components";
 import { MenuIcon } from "../../icons";
 
+type RouteHandle = {
+  name: string;
+};
+
 export function DashboardLayout() {
   const matches = useMatches();
   const logoutFetcher = useFetcher();

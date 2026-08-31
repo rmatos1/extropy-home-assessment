@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router";
 
-import type { SpendingReportResponse } from "@extropy/shared";
+import type { Category, SpendingReportResponse } from "@extropy/shared";
 
 import {
   getSpendingReport,
@@ -8,7 +8,9 @@ import {
   getCategories,
 } from "../../../services";
 
-export function overviewLoader(): Promise<SpendingReportResponse> {
+export function overviewLoader(): Promise<
+  [Category[], SpendingReportResponse]
+> {
   return Promise.all([getCategories(), getSpendingReport()]);
 }
 

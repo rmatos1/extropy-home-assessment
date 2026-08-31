@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createCategory } from "../../../../services";
 
 import { createCategoryAction } from "../";
+import { mockedCategory, mockedCategory2 } from "./mocks";
 
 vi.mock("../../../../services", () => ({
   createCategory: vi.fn(),
@@ -29,10 +30,7 @@ describe("createCategoryAction", () => {
   };
 
   it("should create a category and return a success response", async () => {
-    createCategoryMock.mockResolvedValue({
-      id: "category-123",
-      name: "Food",
-    });
+    createCategoryMock.mockResolvedValue(mockedCategory);
 
     const result = await createCategoryAction({
       request: createRequest("Food"),
@@ -48,10 +46,7 @@ describe("createCategoryAction", () => {
   });
 
   it("should trim the category name before creating it", async () => {
-    createCategoryMock.mockResolvedValue({
-      id: "category-123",
-      name: "Food",
-    });
+    createCategoryMock.mockResolvedValue(mockedCategory);
 
     await createCategoryAction({
       request: createRequest("  Food  "),
@@ -61,10 +56,7 @@ describe("createCategoryAction", () => {
   });
 
   it("should use an empty string when categoryName is missing", async () => {
-    createCategoryMock.mockResolvedValue({
-      id: "category-123",
-      name: "Food",
-    });
+    createCategoryMock.mockResolvedValue(mockedCategory);
 
     await createCategoryAction({
       request: createRequest(),
@@ -74,39 +66,33 @@ describe("createCategoryAction", () => {
   });
 
   it("should return the service error response", async () => {
-    const errorResponse = {
-      error: "Invalid category name",
-    };
-
-    createCategoryMock.mockResolvedValue(errorResponse);
+    createCategoryMock.mockRejectedValue(new Error("Invalid category name"));
 
     const result = await createCategoryAction({
       request: createRequest(""),
     } as never);
 
     expect(createCategoryMock).toHaveBeenCalledWith("");
-    expect(result).toEqual(errorResponse);
+
+    expect(result).toEqual({
+      error: "Invalid category name",
+    });
   });
 
-  it("should return the exact service error without transforming it", async () => {
-    const errorResponse = {
-      error: "CATEGORY_ALREADY_EXISTS",
-    };
-
-    createCategoryMock.mockResolvedValue(errorResponse);
+  it("should return the service error message", async () => {
+    createCategoryMock.mockRejectedValue(new Error("CATEGORY_ALREADY_EXISTS"));
 
     const result = await createCategoryAction({
       request: createRequest("Food"),
     } as never);
 
-    expect(result).toBe(errorResponse);
+    expect(result).toEqual({
+      error: "CATEGORY_ALREADY_EXISTS",
+    });
   });
 
   it("should return the same success response regardless of the created category data", async () => {
-    createCategoryMock.mockResolvedValue({
-      id: "category-456",
-      name: "Transport",
-    });
+    createCategoryMock.mockResolvedValue(mockedCategory2);
 
     const result = await createCategoryAction({
       request: createRequest("Transport"),

@@ -2,10 +2,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Category, Expense } from "@extropy/shared";
-
 import { FormRow } from "../";
 import { useFormRowHelper } from "../useFormRowHelper.hook";
+import {
+  formData,
+  mockedCategories,
+  mockedSuggestion,
+  onClickSuggestedCategory,
+} from "./mocks";
 
 vi.mock("../../../../../components", () => ({
   InputGroup: ({
@@ -22,7 +26,16 @@ vi.mock("../../../../../components", () => ({
     defaultValue?: string | number;
     form?: string;
     max?: string;
-    inputMode?: string;
+    inputMode?:
+      | "text"
+      | "search"
+      | "none"
+      | "email"
+      | "tel"
+      | "url"
+      | "numeric"
+      | "decimal"
+      | undefined;
     pattern?: string;
   }) => (
     <input
@@ -69,35 +82,6 @@ vi.mock("../useFormRowHelper.hook", () => ({
 const useFormRowHelperMock = vi.mocked(useFormRowHelper);
 
 describe("FormRow", () => {
-  const categories: Category[] = [
-    {
-      id: "food",
-      name: "Food",
-    },
-    {
-      id: "transport",
-      name: "Transport",
-    },
-    {
-      id: "bills",
-      name: "Bills",
-    },
-  ];
-
-  const formData: Expense = {
-    id: "expense-123",
-    userId: "user-123",
-    amount: 125.5,
-    description: "Electricity bill",
-    categoryId: "bills",
-    date: "2026-08-30",
-    createdAt: "2026-08-30T10:00:00.000Z",
-    updatedAt: "2026-08-30T10:00:00.000Z",
-  };
-
-  const onChangeDescription = vi.fn();
-  const onClickSuggestedCategory = vi.fn();
-
   const renderFormRow = (
     overrides: Partial<React.ComponentProps<typeof FormRow>> = {}
   ) =>
@@ -107,7 +91,7 @@ describe("FormRow", () => {
           <FormRow
             form="expense-form"
             formData={formData}
-            categories={categories}
+            categories={mockedCategories}
             isEditing={false}
             isSaving={false}
             onCancel={vi.fn()}
@@ -120,16 +104,7 @@ describe("FormRow", () => {
   beforeEach(() => {
     vi.resetAllMocks();
 
-    useFormRowHelperMock.mockReturnValue({
-      categorySelectRef: { current: null },
-      amountRef: { current: null },
-      showSuggestion: false,
-      suggestionTextButton: "",
-      isSuggestingCategory: false,
-      today: "2026-08-31",
-      onChangeDescription,
-      onClickSuggestedCategory,
-    });
+    useFormRowHelperMock.mockReturnValue(mockedSuggestion);
   });
 
   it("should render the row", () => {
@@ -207,7 +182,7 @@ describe("FormRow", () => {
 
     expect(input).toHaveAttribute("name", "amount");
     expect(input).toHaveAttribute("type", "text");
-    expect(input).toHaveValue("125.5");
+    expect(input).toHaveValue("125.50");
     expect(input).toHaveAttribute("form", "expense-form");
     expect(input).toHaveAttribute("inputmode", "decimal");
     expect(input).toHaveAttribute("pattern", "^\\d+([.,]\\d{1,2})?$");
@@ -239,14 +214,9 @@ describe("FormRow", () => {
 
   it("should render the suggestion loading state", () => {
     useFormRowHelperMock.mockReturnValue({
-      categorySelectRef: { current: null },
-      amountRef: { current: null },
+      ...mockedSuggestion,
       showSuggestion: true,
-      suggestionTextButton: "",
       isSuggestingCategory: true,
-      today: "2026-08-31",
-      onChangeDescription,
-      onClickSuggestedCategory,
     });
 
     renderFormRow();
@@ -256,14 +226,9 @@ describe("FormRow", () => {
 
   it("should render the suggested category button", () => {
     useFormRowHelperMock.mockReturnValue({
-      categorySelectRef: { current: null },
-      amountRef: { current: null },
+      ...mockedSuggestion,
       showSuggestion: true,
       suggestionTextButton: "Use category Food",
-      isSuggestingCategory: false,
-      today: "2026-08-31",
-      onChangeDescription,
-      onClickSuggestedCategory,
     });
 
     renderFormRow();
@@ -279,14 +244,9 @@ describe("FormRow", () => {
     const user = userEvent.setup();
 
     useFormRowHelperMock.mockReturnValue({
-      categorySelectRef: { current: null },
-      amountRef: { current: null },
+      ...mockedSuggestion,
       showSuggestion: true,
       suggestionTextButton: "Use category Food",
-      isSuggestingCategory: false,
-      today: "2026-08-31",
-      onChangeDescription,
-      onClickSuggestedCategory,
     });
 
     renderFormRow();
@@ -319,7 +279,7 @@ describe("FormRow", () => {
 
     expect(useFormRowHelperMock).toHaveBeenCalledWith(
       formData.description,
-      categories
+      mockedCategories
     );
   });
 
@@ -333,14 +293,9 @@ describe("FormRow", () => {
 
   it("should render bottom spacing when a suggestion is visible", () => {
     useFormRowHelperMock.mockReturnValue({
-      categorySelectRef: { current: null },
-      amountRef: { current: null },
+      ...mockedSuggestion,
       showSuggestion: true,
       suggestionTextButton: "Use category Food",
-      isSuggestingCategory: false,
-      today: "2026-08-31",
-      onChangeDescription,
-      onClickSuggestedCategory,
     });
 
     const { container } = renderFormRow();
