@@ -21,7 +21,11 @@ const serverlessConfiguration = {
 
     httpApi: {
       cors: {
-        allowedOrigins: ["https://extropy-home-assessment.vercel.app/"],
+        allowedOrigins: [
+          "http://localhost:5173",
+          "https://extropy-home-assessment.vercel.app",
+          "https://extropy-home-assessment-miwmphorv-roberiomatos-projects.vercel.app",
+        ],
         allowedHeaders: ["Content-Type"],
         allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allowCredentials: true,
@@ -89,6 +93,15 @@ const serverlessConfiguration = {
             ],
           },
         ],
+      },
+    },
+  },
+
+  build: {
+    esbuild: {
+      format: "cjs",
+      outExtension: {
+        ".js": ".cjs",
       },
     },
   },

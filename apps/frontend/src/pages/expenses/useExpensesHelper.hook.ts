@@ -65,7 +65,7 @@ export const useExpensesHelper = () => {
     }
 
     if (expensesFetcher.data?.operation === "delete") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setShowDeleteModal(false);
       setSelectedExpenseId(null);
     }

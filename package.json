@@ -5,7 +5,9 @@
   "main": "index.js",
   "packageManager": "pnpm@11.24.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "pnpm --filter frontend build",
+    "test": "pnpm --filter frontend test && pnpm --filter backend test",
+    "typecheck": "pnpm --filter frontend exec tsc -b"
   },
   "keywords": [],
   "author": "",

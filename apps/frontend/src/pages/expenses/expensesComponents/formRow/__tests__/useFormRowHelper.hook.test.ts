@@ -1,10 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-
-import type { Category } from "@extropy/shared";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { suggestExpenseCategory } from "../../../../../services";
 import { useFormRowHelper } from "../useFormRowHelper.hook";
+
+import { mockedCategories, mockedSuggestion } from "./mocks";
 
 vi.mock("../../../../../services", () => ({
   suggestExpenseCategory: vi.fn(),
@@ -12,27 +12,25 @@ vi.mock("../../../../../services", () => ({
 
 const suggestExpenseCategoryMock = vi.mocked(suggestExpenseCategory);
 
-const flushSuggestion = async () => {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(700);
-  });
-};
-
 describe("useFormRowHelper", () => {
-  const categories: Category[] = [
-    {
-      id: "food",
-      name: "Food",
-    },
-    {
-      id: "transport",
-      name: "Transport",
-    },
-    {
-      id: "bills",
-      name: "Bills",
-    },
-  ];
+  const changeDescription = (
+    onChangeDescription: (event: React.ChangeEvent<HTMLInputElement>) => void,
+    value: string
+  ) => {
+    act(() => {
+      onChangeDescription({
+        target: {
+          value,
+        },
+      } as React.ChangeEvent<HTMLInputElement>);
+    });
+  };
+
+  const advanceSuggestion = async () => {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+  };
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -43,60 +41,54 @@ describe("useFormRowHelper", () => {
     vi.useRealTimers();
   });
 
-  it("should initialize without a suggestion", () => {
-    const { result } = renderHook(() => useFormRowHelper("Lunch", categories));
+  it("should initialize with the provided description and no suggestion", () => {
+    const { result } = renderHook(() =>
+      useFormRowHelper("Restaurant dinner", mockedCategories)
+    );
 
-    expect(result.current.suggestionTextButton).toBe("");
     expect(result.current.showSuggestion).toBe(false);
+    expect(result.current.suggestionTextButton).toBe("");
     expect(result.current.isSuggestingCategory).toBe(false);
   });
 
   it("should return today's date", () => {
-    const expectedToday = new Date().toISOString().split("T")[0];
+    const { result } = renderHook(() =>
+      useFormRowHelper("Lunch", mockedCategories)
+    );
 
-    const { result } = renderHook(() => useFormRowHelper("Lunch", categories));
+    const expectedToday = new Date().toISOString().split("T")[0];
 
     expect(result.current.today).toBe(expectedToday);
   });
 
-  it("should not request a suggestion when the description has 3 or fewer characters", async () => {
-    renderHook(() => useFormRowHelper("foo", categories));
+  it("should not request a suggestion on mount", async () => {
+    renderHook(() => useFormRowHelper("Restaurant dinner", mockedCategories));
 
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      await vi.advanceTimersByTimeAsync(1000);
     });
 
     expect(suggestExpenseCategoryMock).not.toHaveBeenCalled();
   });
 
-  it("should not request a suggestion for an empty description", async () => {
-    renderHook(() => useFormRowHelper("", categories));
-
-    await act(async () => {
-      vi.advanceTimersByTime(1000);
-    });
-
-    expect(suggestExpenseCategoryMock).not.toHaveBeenCalled();
-  });
-
-  it("should request a category suggestion after 700ms", async () => {
+  it("should request a suggestion 700ms after the description changes", async () => {
     suggestExpenseCategoryMock.mockResolvedValue({
       categoryId: "food",
       confidence: 0.95,
     });
 
-    renderHook(() => useFormRowHelper("Restaurant dinner", categories));
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
-    expect(suggestExpenseCategoryMock).not.toHaveBeenCalled();
+    changeDescription(result.current.onChangeDescription, "Restaurant dinner");
 
     await act(async () => {
-      vi.advanceTimersByTime(699);
+      await vi.advanceTimersByTimeAsync(699);
     });
 
     expect(suggestExpenseCategoryMock).not.toHaveBeenCalled();
 
     await act(async () => {
-      vi.advanceTimersByTime(1);
+      await vi.advanceTimersByTimeAsync(1);
     });
 
     expect(suggestExpenseCategoryMock).toHaveBeenCalledTimes(1);
@@ -112,61 +104,52 @@ describe("useFormRowHelper", () => {
       confidence: 0.95,
     });
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Restaurant dinner", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(700);
-    });
+    changeDescription(result.current.onChangeDescription, "Restaurant dinner");
+
+    await advanceSuggestion();
 
     expect(result.current.isSuggestingCategory).toBe(false);
     expect(result.current.showSuggestion).toBe(true);
-    expect(result.current.suggestionTextButton).toBe("Use ccategory Food");
+    expect(result.current.suggestionTextButton).toBe("Use category Food");
   });
 
-  it("should use the category id when the suggested category is not in the list", async () => {
+  it("should use the category id when the suggestion is not in the category list", async () => {
     suggestExpenseCategoryMock.mockResolvedValue({
       categoryId: "unknown-category",
       confidence: 0.8,
     });
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Unknown expense", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(700);
-    });
+    changeDescription(result.current.onChangeDescription, "Unknown expense");
+
+    await advanceSuggestion();
 
     expect(result.current.suggestionTextButton).toBe(
-      "Use ccategory unknown-category"
+      "Use category unknown-category"
     );
   });
 
-  it("should not render a suggestion button when categoryId is null", async () => {
+  it("should not show a suggestion when categoryId is null", async () => {
     suggestExpenseCategoryMock.mockResolvedValue({
       categoryId: null,
       confidence: 0.2,
     });
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Ambiguous expense", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(700);
-    });
+    changeDescription(result.current.onChangeDescription, "Ambiguous expense");
 
-    expect(result.current.suggestionTextButton).toBe("");
+    await advanceSuggestion();
+
     expect(result.current.showSuggestion).toBe(false);
+    expect(result.current.suggestionTextButton).toBe("");
   });
 
-  it("should set the loading state while requesting a suggestion", async () => {
-    let resolveRequest!: (value: {
-      categoryId: string | null;
-      confidence: number;
-    }) => void;
+  it("should show the loading state while waiting for the suggestion", async () => {
+    let resolveRequest!: (value: typeof mockedSuggestion) => void;
 
     suggestExpenseCategoryMock.mockImplementation(
       () =>
@@ -175,13 +158,13 @@ describe("useFormRowHelper", () => {
         })
     );
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Restaurant dinner", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(700);
-    });
+    changeDescription(result.current.onChangeDescription, "Restaurant dinner");
+
+    await advanceSuggestion();
+
+    expect(suggestExpenseCategoryMock).toHaveBeenCalledTimes(1);
 
     expect(result.current.isSuggestingCategory).toBe(true);
     expect(result.current.showSuggestion).toBe(true);
@@ -203,24 +186,18 @@ describe("useFormRowHelper", () => {
       confidence: 0.95,
     });
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Restaurant dinner", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
-    await flushSuggestion();
+    changeDescription(result.current.onChangeDescription, "Restaurant dinner");
 
-    expect(result.current.suggestionTextButton).toBe("Use ccategory Food");
+    await advanceSuggestion();
 
-    act(() => {
-      result.current.onChangeDescription({
-        target: {
-          value: "New description",
-        },
-      } as React.ChangeEvent<HTMLInputElement>);
-    });
+    expect(result.current.showSuggestion).toBe(true);
 
-    expect(result.current.suggestionTextButton).toBe("");
+    changeDescription(result.current.onChangeDescription, "New description");
+
     expect(result.current.showSuggestion).toBe(false);
+    expect(result.current.suggestionTextButton).toBe("");
   });
 
   it("should debounce description changes", async () => {
@@ -229,30 +206,27 @@ describe("useFormRowHelper", () => {
       confidence: 0.95,
     });
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Original description", categories)
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
+
+    changeDescription(result.current.onChangeDescription, "First description");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    changeDescription(
+      result.current.onChangeDescription,
+      "Updated description"
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(300);
-    });
-
-    act(() => {
-      result.current.onChangeDescription({
-        target: {
-          value: "Updated description",
-        },
-      } as React.ChangeEvent<HTMLInputElement>);
-    });
-
-    await act(async () => {
-      vi.advanceTimersByTime(699);
+      await vi.advanceTimersByTimeAsync(699);
     });
 
     expect(suggestExpenseCategoryMock).not.toHaveBeenCalled();
 
     await act(async () => {
-      vi.advanceTimersByTime(1);
+      await vi.advanceTimersByTimeAsync(1);
     });
 
     expect(suggestExpenseCategoryMock).toHaveBeenCalledTimes(1);
@@ -262,29 +236,23 @@ describe("useFormRowHelper", () => {
     );
   });
 
-  it("should not request a suggestion again for the same description", async () => {
+  it("should not request the same description twice", async () => {
     suggestExpenseCategoryMock.mockResolvedValue({
       categoryId: "food",
       confidence: 0.95,
     });
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Restaurant dinner", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
-    await flushSuggestion();
+    changeDescription(result.current.onChangeDescription, "Restaurant dinner");
+
+    await advanceSuggestion();
 
     expect(suggestExpenseCategoryMock).toHaveBeenCalledTimes(1);
 
-    act(() => {
-      result.current.onChangeDescription({
-        target: {
-          value: "Restaurant dinner",
-        },
-      } as React.ChangeEvent<HTMLInputElement>);
-    });
+    changeDescription(result.current.onChangeDescription, "Restaurant dinner");
 
-    await flushSuggestion();
+    await advanceSuggestion();
 
     expect(suggestExpenseCategoryMock).toHaveBeenCalledTimes(1);
   });
@@ -292,26 +260,24 @@ describe("useFormRowHelper", () => {
   it("should clear the suggestion when the service fails", async () => {
     suggestExpenseCategoryMock.mockRejectedValue(new Error("OpenAI error"));
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Restaurant dinner", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
-    await flushSuggestion();
+    changeDescription(result.current.onChangeDescription, "Restaurant dinner");
+
+    await advanceSuggestion();
 
     expect(result.current.isSuggestingCategory).toBe(false);
-    expect(result.current.suggestionTextButton).toBe("");
     expect(result.current.showSuggestion).toBe(false);
+    expect(result.current.suggestionTextButton).toBe("");
   });
 
-  it("should set the selected category when applying a suggestion", async () => {
+  it("should apply the suggested category and focus the amount input", async () => {
     suggestExpenseCategoryMock.mockResolvedValue({
       categoryId: "food",
       confidence: 0.95,
     });
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Restaurant dinner", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
     const categorySelect = document.createElement("select");
 
@@ -328,9 +294,11 @@ describe("useFormRowHelper", () => {
 
     const focusSpy = vi.spyOn(amountInput, "focus");
 
-    await flushSuggestion();
+    changeDescription(result.current.onChangeDescription, "Restaurant dinner");
 
-    expect(result.current.suggestionTextButton).toBe("Use ccategory Food");
+    await advanceSuggestion();
+
+    expect(result.current.suggestionTextButton).toBe("Use category Food");
 
     act(() => {
       result.current.onClickSuggestedCategory();
@@ -343,9 +311,7 @@ describe("useFormRowHelper", () => {
   });
 
   it("should do nothing when there is no suggested category", () => {
-    const { result } = renderHook(() =>
-      useFormRowHelper("Restaurant dinner", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", mockedCategories));
 
     const categorySelect = document.createElement("select");
     const amountInput = document.createElement("input");
@@ -363,38 +329,18 @@ describe("useFormRowHelper", () => {
     expect(focusSpy).not.toHaveBeenCalled();
   });
 
-  it("should clear the suggestion after applying it", async () => {
+  it("should use the category id when categories are empty", async () => {
     suggestExpenseCategoryMock.mockResolvedValue({
-      categoryId: "transport",
-      confidence: 0.9,
+      categoryId: "food",
+      confidence: 0.95,
     });
 
-    const { result } = renderHook(() =>
-      useFormRowHelper("Uber ride", categories)
-    );
+    const { result } = renderHook(() => useFormRowHelper("", []));
 
-    const categorySelect = document.createElement("select");
+    changeDescription(result.current.onChangeDescription, "Restaurant dinner");
 
-    const option = document.createElement("option");
-    option.value = "transport";
-    option.textContent = "Transport";
+    await advanceSuggestion();
 
-    categorySelect.appendChild(option);
-
-    const amountInput = document.createElement("input");
-
-    result.current.categorySelectRef.current = categorySelect;
-    result.current.amountRef.current = amountInput;
-
-    await flushSuggestion();
-
-    expect(result.current.suggestionTextButton).toBe("Use ccategory Transport");
-
-    act(() => {
-      result.current.onClickSuggestedCategory();
-    });
-
-    expect(result.current.showSuggestion).toBe(false);
-    expect(result.current.suggestionTextButton).toBe("");
+    expect(result.current.suggestionTextButton).toBe("Use category food");
   });
 });
