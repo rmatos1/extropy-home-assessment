@@ -16,6 +16,5 @@ export async function createCategoryAction({ request }: ActionFunctionArgs) {
   return {
     success: true,
     message: "Category added successfully!",
-    category: result,
   };
 }

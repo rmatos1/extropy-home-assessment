@@ -1,14 +1,19 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import type { ExpenseResponse } from "@extropy/shared";
 
-import type { Expense } from "@extropy/shared";
+import { currencyFormatter, formatDate } from "../../helpers";
 
-import { currencyFormatter } from "../../helpers";
-
-export const columns: Array<ColumnDef<typeof features, Expense>> = [
+export const getColumns = (
+  categoryMap: Map<string, string>
+): Array<ColumnDef<ExpenseResponse>> => [
   {
     accessorKey: "date",
     header: "Date",
-    cell: (info) => info.getValue<string>(),
+    cell: ({ getValue }) => {
+      const value = getValue<string>();
+
+      return formatDate(value);
+    },
   },
   {
     accessorKey: "description",
@@ -16,9 +21,10 @@ export const columns: Array<ColumnDef<typeof features, Expense>> = [
     cell: (info) => info.getValue<string>(),
   },
   {
-    accessorKey: "category",
+    id: "category",
     header: "Category",
-    cell: (info) => info.getValue<string>(),
+    accessorFn: (expense) =>
+      categoryMap.get(expense.categoryId) ?? expense.categoryId,
   },
   {
     accessorKey: "amount",

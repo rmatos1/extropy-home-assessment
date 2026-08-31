@@ -25,7 +25,7 @@ export function ActionButton({
       name={name}
       value={value}
       className={`
-        h-12 rounded-md
+        flex h-12 items-center justify-center gap-2 rounded-md
         bg-linear-to-b from-blue-500 to-blue-600
         font-bold text-white
         cursor-pointer
@@ -38,7 +38,11 @@ export function ActionButton({
       onClick={onClick}
       disabled={isDisabled}
     >
-      {isProcessing ? "Processing..." : text}
+      {isProcessing && (
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+      )}
+
+      <span>{isProcessing ? "Processing..." : text}</span>
     </button>
   );
 }

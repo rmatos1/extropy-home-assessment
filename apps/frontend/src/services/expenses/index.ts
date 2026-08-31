@@ -2,6 +2,7 @@ import type {
   Expense,
   ExpenseResponse,
   GetExpensesParams,
+  SuggestCategoryResponse,
 } from "@extropy/shared";
 
 import { api } from "../api";
@@ -53,5 +54,14 @@ export function updateExpense(
 export function deleteExpense(expenseId: string): Promise<void> {
   return api<void>(`/expenses/${expenseId}`, {
     method: "DELETE",
+  });
+}
+
+export function suggestExpenseCategory(
+  description: string
+): Promise<SuggestCategoryResponse> {
+  return api<SuggestCategoryResponse>("/expenses/suggest-category", {
+    method: "POST",
+    body: JSON.stringify({ description }),
   });
 }

@@ -16,7 +16,8 @@
     "@aws-sdk/lib-dynamodb": "^3.1116.0",
     "@extropy/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "openai": "^7.8.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.162",

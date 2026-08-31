@@ -1,3 +1,4 @@
+```ts
 import jwt from "jsonwebtoken";
 import { describe, expect, it } from "vitest";
 
@@ -23,7 +24,7 @@ if (!jwtSecret) {
 }
 
 describe("auth.helpers", () => {
-  const { id, email, password } = mockedUser;
+  const { id, email } = mockedUser;
 
   describe("getJwtSecret", () => {
     it("should return the configured JWT secret", () => {
@@ -114,7 +115,9 @@ describe("auth.helpers", () => {
     it("should return the token from the session cookie", () => {
       const token = "test-token";
 
-      const result = getTokenFromCookie(`${SESSION_COOKIE_NAME}=${token}`);
+      const result = getTokenFromCookie([
+        `${SESSION_COOKIE_NAME}=${token}`,
+      ]);
 
       expect(result).toBe(token);
     });
@@ -122,9 +125,11 @@ describe("auth.helpers", () => {
     it("should return the token when other cookies are present", () => {
       const token = "test-token";
 
-      const result = getTokenFromCookie(
-        `theme=dark; ${SESSION_COOKIE_NAME}=${token}; language=en`
-      );
+      const result = getTokenFromCookie([
+        "theme=dark",
+        `${SESSION_COOKIE_NAME}=${token}`,
+        "language=en",
+      ]);
 
       expect(result).toBe(token);
     });
@@ -133,15 +138,19 @@ describe("auth.helpers", () => {
       expect(() => getTokenFromCookie(undefined)).toThrow("UNAUTHORIZED");
     });
 
-    it("should reject a cookie header without a session cookie", () => {
-      expect(() => getTokenFromCookie("theme=dark; language=en")).toThrow(
-        "UNAUTHORIZED"
-      );
+    it("should reject an empty cookie array", () => {
+      expect(() => getTokenFromCookie([])).toThrow("UNAUTHORIZED");
+    });
+
+    it("should reject cookies without a session cookie", () => {
+      expect(() =>
+        getTokenFromCookie(["theme=dark", "language=en"])
+      ).toThrow("UNAUTHORIZED");
     });
   });
 
   describe("getAuthenticatedUserId", () => {
-    it("should return the user id from a valid session cookie", () => {
+    it("should return the user id from a valid session cookie", async () => {
       const token = jwt.sign(
         {
           sub: id,
@@ -150,18 +159,22 @@ describe("auth.helpers", () => {
         jwtSecret
       );
 
-      const result = getAuthenticatedUserId(`${SESSION_COOKIE_NAME}=${token}`);
+      const result = await getAuthenticatedUserId([
+        `${SESSION_COOKIE_NAME}=${token}`,
+      ]);
 
       expect(result).toBe(id);
     });
 
-    it("should reject an invalid JWT", () => {
-      expect(() =>
-        getAuthenticatedUserId(`${SESSION_COOKIE_NAME}=invalid-token`)
-      ).toThrow();
+    it("should reject an invalid JWT", async () => {
+      await expect(
+        getAuthenticatedUserId([
+          `${SESSION_COOKIE_NAME}=invalid-token`,
+        ])
+      ).rejects.toThrow("UNAUTHORIZED");
     });
 
-    it("should reject a JWT without a user id", () => {
+    it("should reject a JWT without a user id", async () => {
       const token = jwt.sign(
         {
           email,
@@ -169,12 +182,14 @@ describe("auth.helpers", () => {
         jwtSecret
       );
 
-      expect(() =>
-        getAuthenticatedUserId(`${SESSION_COOKIE_NAME}=${token}`)
-      ).toThrow("UNAUTHORIZED");
+      await expect(
+        getAuthenticatedUserId([
+          `${SESSION_COOKIE_NAME}=${token}`,
+        ])
+      ).rejects.toThrow("UNAUTHORIZED");
     });
 
-    it("should reject a JWT signed with another secret", () => {
+    it("should reject a JWT signed with another secret", async () => {
       const token = jwt.sign(
         {
           sub: id,
@@ -182,9 +197,18 @@ describe("auth.helpers", () => {
         "another-secret"
       );
 
-      expect(() =>
-        getAuthenticatedUserId(`${SESSION_COOKIE_NAME}=${token}`)
-      ).toThrow();
+      await expect(
+        getAuthenticatedUserId([
+          `${SESSION_COOKIE_NAME}=${token}`,
+        ])
+      ).rejects.toThrow("UNAUTHORIZED");
+    });
+
+    it("should reject when the session cookie is missing", async () => {
+      await expect(
+        getAuthenticatedUserId(["theme=dark"])
+      ).rejects.toThrow("UNAUTHORIZED");
     });
   });
 });
+```

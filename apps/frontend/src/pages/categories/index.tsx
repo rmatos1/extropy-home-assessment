@@ -6,18 +6,21 @@ import { columns } from "./categories.constants";
 
 export function Categories() {
   const {
+    categoriesFetcher,
     categoriesFormRef,
     isAdding,
     categories,
     isSaving,
     onClickAddCategory,
     onCancelCategoryForm,
+    isLoading,
   } = useCategoriesHelper();
 
   function renderFormRow() {
     return (
       <FormRow
         ref={categoriesFormRef}
+        fetcher={categoriesFetcher}
         isSaving={isSaving}
         onCancel={onCancelCategoryForm}
       />
@@ -35,13 +38,14 @@ export function Categories() {
         />
       </div>
 
-      <div className="overflow-x-auto w-sm rounded-lg border border-gray-200 mx-auto">
+      <div className="mx-auto w-fit max-w-full min-w-0 overflow-x-auto rounded-lg border border-gray-200">
         <DashboardTable
           tableKey="categories-table"
           columns={columns}
           data={categories}
           isAdding={isAdding}
           renderFormRow={renderFormRow}
+          isLoading={isLoading}
         />
       </div>
     </div>

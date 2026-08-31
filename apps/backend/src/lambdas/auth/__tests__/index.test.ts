@@ -1,90 +1,273 @@
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createSessionCookie, getAuthenticatedUserId } from "../auth.helpers";
+import { ERROR_MESSAGES, SESSION_COOKIE_NAME } from "../auth.constants";
+import { getCurrentUser, login, signup, updateProfile } from "../auth.services";
 import { handler } from "../index";
-import { ERROR_MESSAGES } from "../auth.constants";
-import { mockedUser } from "./mocks";
-
-const { signupMock, loginMock, getCurrentUserMock, createSessionCookieMock } =
-  vi.hoisted(() => ({
-    signupMock: vi.fn(),
-    loginMock: vi.fn(),
-    getCurrentUserMock: vi.fn(),
-    createSessionCookieMock: vi.fn(),
-  }));
 
 vi.mock("../auth.services", () => ({
-  signup: signupMock,
-  login: loginMock,
-  getCurrentUser: getCurrentUserMock,
+  getCurrentUser: vi.fn(),
+  login: vi.fn(),
+  signup: vi.fn(),
+  updateProfile: vi.fn(),
 }));
 
 vi.mock("../auth.helpers", () => ({
-  createSessionCookie: createSessionCookieMock,
+  createSessionCookie: vi.fn(),
+  getAuthenticatedUserId: vi.fn(),
 }));
 
+const getCurrentUserMock = vi.mocked(getCurrentUser);
+const loginMock = vi.mocked(login);
+const signupMock = vi.mocked(signup);
+const updateProfileMock = vi.mocked(updateProfile);
+
+const createSessionCookieMock = vi.mocked(createSessionCookie);
+const getAuthenticatedUserIdMock = vi.mocked(getAuthenticatedUserId);
+
 const createEvent = (
-  routeKey: string,
-  body?: unknown,
-  cookie?: string
+  overrides: Partial<APIGatewayProxyEventV2> = {}
 ): APIGatewayProxyEventV2 =>
   ({
-    routeKey,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    headers: cookie
-      ? {
-          cookie,
-        }
-      : {},
+    version: "2.0",
+    routeKey: "$default",
+    rawPath: "/",
+    rawQueryString: "",
+    headers: {},
+    requestContext: {} as APIGatewayProxyEventV2["requestContext"],
+    isBase64Encoded: false,
+    ...overrides,
   } as APIGatewayProxyEventV2);
 
-describe("auth lambda handler", () => {
-  const { id, email, password } = mockedUser;
-
+describe("auth handler", () => {
   beforeEach(() => {
-    signupMock.mockReset();
-    loginMock.mockReset();
-    getCurrentUserMock.mockReset();
-    createSessionCookieMock.mockReset();
+    vi.resetAllMocks();
+  });
+
+  describe("GET /auth/me", () => {
+    it("should return the current user", async () => {
+      const user = {
+        id: "user-123",
+        email: "john@example.com",
+      };
+
+      getCurrentUserMock.mockResolvedValue(user);
+
+      const event = createEvent({
+        routeKey: "GET /auth/me",
+        cookies: ["session=token"],
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify(user),
+      });
+
+      expect(getCurrentUserMock).toHaveBeenCalledWith(["session=token"]);
+    });
+
+    it("should return 401 when the user is unauthorized", async () => {
+      getCurrentUserMock.mockRejectedValue(new Error("UNAUTHORIZED"));
+
+      const event = createEvent({
+        routeKey: "GET /auth/me",
+        cookies: ["session=invalid"],
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 401,
+        body: JSON.stringify({
+          message: "Unauthorized",
+        }),
+      });
+    });
+
+    it("should return 500 for an unexpected error", async () => {
+      getCurrentUserMock.mockRejectedValue(new Error("Unexpected error"));
+
+      const event = createEvent({
+        routeKey: "GET /auth/me",
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 500,
+        body: JSON.stringify({
+          message: "Internal server error",
+        }),
+      });
+    });
+  });
+
+  describe("PATCH /auth/me", () => {
+    it("should return 400 when the request body is missing", async () => {
+      const event = createEvent({
+        routeKey: "PATCH /auth/me",
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 400,
+        body: JSON.stringify({
+          message: "Request body is required",
+        }),
+      });
+
+      expect(getAuthenticatedUserIdMock).not.toHaveBeenCalled();
+      expect(updateProfileMock).not.toHaveBeenCalled();
+    });
+
+    it("should return 400 when the request body contains invalid JSON", async () => {
+      const event = createEvent({
+        routeKey: "PATCH /auth/me",
+        body: "{invalid-json",
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 400,
+        body: JSON.stringify({
+          message: "Invalid JSON body",
+        }),
+      });
+
+      expect(getAuthenticatedUserIdMock).not.toHaveBeenCalled();
+      expect(updateProfileMock).not.toHaveBeenCalled();
+    });
+
+    it("should update the profile", async () => {
+      const cookies = ["session=token"];
+      const body = {
+        email: "new@example.com",
+        password: "new-password",
+      };
+
+      getAuthenticatedUserIdMock.mockResolvedValue("user-123");
+      updateProfileMock.mockResolvedValue(["email", "password"]);
+
+      const event = createEvent({
+        routeKey: "PATCH /auth/me",
+        cookies,
+        body: JSON.stringify(body),
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify(["email", "password"]),
+      });
+
+      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith(cookies);
+      expect(updateProfileMock).toHaveBeenCalledWith("user-123", body);
+    });
+
+    it("should return 401 when authentication fails", async () => {
+      getAuthenticatedUserIdMock.mockRejectedValue(new Error("UNAUTHORIZED"));
+
+      const event = createEvent({
+        routeKey: "PATCH /auth/me",
+        cookies: ["session=invalid"],
+        body: JSON.stringify({
+          email: "new@example.com",
+        }),
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 401,
+        body: JSON.stringify({
+          message: "Unauthorized",
+        }),
+      });
+
+      expect(updateProfileMock).not.toHaveBeenCalled();
+    });
+
+    it("should return 400 for invalid email", async () => {
+      getAuthenticatedUserIdMock.mockResolvedValue("user-123");
+      updateProfileMock.mockRejectedValue(new Error("INVALID_EMAIL"));
+
+      const event = createEvent({
+        routeKey: "PATCH /auth/me",
+        body: JSON.stringify({
+          email: "invalid-email",
+        }),
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 400,
+        body: JSON.stringify({
+          message: ERROR_MESSAGES.INVALID_EMAIL,
+        }),
+      });
+    });
+
+    it("should return 400 for invalid password", async () => {
+      getAuthenticatedUserIdMock.mockResolvedValue("user-123");
+      updateProfileMock.mockRejectedValue(new Error("INVALID_PASSWORD"));
+
+      const event = createEvent({
+        routeKey: "PATCH /auth/me",
+        body: JSON.stringify({
+          password: "short",
+        }),
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 400,
+        body: JSON.stringify({
+          message: ERROR_MESSAGES.INVALID_PASSWORD,
+        }),
+      });
+    });
+
+    it("should return 409 when the email already exists", async () => {
+      getAuthenticatedUserIdMock.mockResolvedValue("user-123");
+      updateProfileMock.mockRejectedValue(
+        new Error("USER_EMAIL_ALREADY_EXISTS")
+      );
+
+      const event = createEvent({
+        routeKey: "PATCH /auth/me",
+        body: JSON.stringify({
+          email: "existing@example.com",
+        }),
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 409,
+        body: JSON.stringify({
+          message: "A user with this email is already registered.",
+        }),
+      });
+    });
   });
 
   describe("POST /auth/signup", () => {
-    it("should return 201 and set the session cookie when signup succeeds", async () => {
-      const input = {
-        email,
-        password,
-      };
-
-      const token = "signup-token";
-      const cookie = "session=signup-token; HttpOnly";
-
-      signupMock.mockResolvedValueOnce(token);
-      createSessionCookieMock.mockReturnValueOnce(cookie);
-
-      const response = await handler(
-        createEvent("POST /auth/signup", input),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
-        statusCode: 201,
-        cookies: [cookie],
+    it("should return 400 when the request body is missing", async () => {
+      const event = createEvent({
+        routeKey: "POST /auth/signup",
       });
 
-      expect(signupMock).toHaveBeenCalledWith(input);
-      expect(createSessionCookieMock).toHaveBeenCalledWith(token);
-      expect(loginMock).not.toHaveBeenCalled();
-    });
+      const result = await handler(event);
 
-    it("should return 400 when the request body is missing", async () => {
-      const response = await handler(
-        createEvent("POST /auth/signup"),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
+      expect(result).toEqual({
         statusCode: 400,
         body: JSON.stringify({
           message: "Request body is required",
@@ -92,82 +275,92 @@ describe("auth lambda handler", () => {
       });
 
       expect(signupMock).not.toHaveBeenCalled();
-      expect(loginMock).not.toHaveBeenCalled();
     });
 
-    it("should return 500 when the request body is invalid JSON", async () => {
-      const event = {
+    it("should create a user and return a session cookie", async () => {
+      const body = {
+        email: "john@example.com",
+        password: "password123",
+      };
+
+      const token = "signup-token";
+      const cookie = `${SESSION_COOKIE_NAME}=${token}; HttpOnly; Secure`;
+
+      signupMock.mockResolvedValue(token);
+      createSessionCookieMock.mockReturnValue(cookie);
+
+      const event = createEvent({
         routeKey: "POST /auth/signup",
-        body: "{invalid-json",
-        headers: {},
-      } as APIGatewayProxyEventV2;
-
-      const response = await handler(event, {} as never, () => undefined);
-
-      expect(response).toEqual({
-        statusCode: 500,
-        body: JSON.stringify({
-          message: "Internal server error",
-        }),
+        body: JSON.stringify(body),
       });
 
-      expect(signupMock).not.toHaveBeenCalled();
-      expect(loginMock).not.toHaveBeenCalled();
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 201,
+        cookies: [cookie],
+      });
+
+      expect(signupMock).toHaveBeenCalledWith(body);
+      expect(createSessionCookieMock).toHaveBeenCalledWith(token);
     });
 
     it("should return 400 for invalid email", async () => {
-      signupMock.mockRejectedValueOnce(new Error("INVALID_EMAIL"));
+      signupMock.mockRejectedValue(new Error("INVALID_EMAIL"));
 
-      const response = await handler(
-        createEvent("POST /auth/signup", {
+      const event = createEvent({
+        routeKey: "POST /auth/signup",
+        body: JSON.stringify({
           email: "invalid",
-          password,
+          password: "password123",
         }),
-        {} as never,
-        () => undefined
-      );
+      });
 
-      expect(response).toEqual({
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 400,
         body: JSON.stringify({
-          message: ERROR_MESSAGES["INVALID_EMAIL"],
+          message: ERROR_MESSAGES.INVALID_EMAIL,
         }),
       });
     });
 
     it("should return 400 for invalid password", async () => {
-      signupMock.mockRejectedValueOnce(new Error("INVALID_PASSWORD"));
+      signupMock.mockRejectedValue(new Error("INVALID_PASSWORD"));
 
-      const response = await handler(
-        createEvent("POST /auth/signup", {
-          email,
+      const event = createEvent({
+        routeKey: "POST /auth/signup",
+        body: JSON.stringify({
+          email: "john@example.com",
           password: "short",
         }),
-        {} as never,
-        () => undefined
-      );
+      });
 
-      expect(response).toEqual({
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 400,
         body: JSON.stringify({
-          message: ERROR_MESSAGES["INVALID_PASSWORD"],
+          message: ERROR_MESSAGES.INVALID_PASSWORD,
         }),
       });
     });
 
-    it("should return 409 when the email is already registered", async () => {
-      signupMock.mockRejectedValueOnce(new Error("USER_EMAIL_ALREADY_EXISTS"));
+    it("should return 409 when the email already exists", async () => {
+      signupMock.mockRejectedValue(new Error("USER_EMAIL_ALREADY_EXISTS"));
 
-      const response = await handler(
-        createEvent("POST /auth/signup", {
-          email,
-          password,
+      const event = createEvent({
+        routeKey: "POST /auth/signup",
+        body: JSON.stringify({
+          email: "john@example.com",
+          password: "password123",
         }),
-        {} as never,
-        () => undefined
-      );
+      });
 
-      expect(response).toEqual({
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 409,
         body: JSON.stringify({
           message: "A user with this email is already registered.",
@@ -177,42 +370,14 @@ describe("auth lambda handler", () => {
   });
 
   describe("POST /auth/login", () => {
-    it("should return 200 and set the session cookie when login succeeds", async () => {
-      const input = {
-        email,
-        password,
-      };
-
-      const token = "login-token";
-      const cookie = "session=login-token; HttpOnly";
-
-      loginMock.mockResolvedValueOnce(token);
-      createSessionCookieMock.mockReturnValueOnce(cookie);
-
-      const response = await handler(
-        createEvent("POST /auth/login", input),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
-        statusCode: 200,
-        cookies: [cookie],
+    it("should return 400 when the request body is missing", async () => {
+      const event = createEvent({
+        routeKey: "POST /auth/login",
       });
 
-      expect(loginMock).toHaveBeenCalledWith(input);
-      expect(createSessionCookieMock).toHaveBeenCalledWith(token);
-      expect(signupMock).not.toHaveBeenCalled();
-    });
+      const result = await handler(event);
 
-    it("should return 400 when the request body is missing", async () => {
-      const response = await handler(
-        createEvent("POST /auth/login"),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
+      expect(result).toEqual({
         statusCode: 400,
         body: JSON.stringify({
           message: "Request body is required",
@@ -222,19 +387,48 @@ describe("auth lambda handler", () => {
       expect(loginMock).not.toHaveBeenCalled();
     });
 
-    it("should return 401 when credentials are invalid", async () => {
-      loginMock.mockRejectedValueOnce(new Error("INVALID_CREDENTIALS"));
+    it("should login the user and return a session cookie", async () => {
+      const body = {
+        email: "john@example.com",
+        password: "password123",
+      };
 
-      const response = await handler(
-        createEvent("POST /auth/login", {
-          email,
+      const token = "login-token";
+      const cookie = `${SESSION_COOKIE_NAME}=${token}; HttpOnly; Secure`;
+
+      loginMock.mockResolvedValue(token);
+      createSessionCookieMock.mockReturnValue(cookie);
+
+      const event = createEvent({
+        routeKey: "POST /auth/login",
+        body: JSON.stringify(body),
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 200,
+        cookies: [cookie],
+      });
+
+      expect(loginMock).toHaveBeenCalledWith(body);
+      expect(createSessionCookieMock).toHaveBeenCalledWith(token);
+    });
+
+    it("should return 401 for invalid credentials", async () => {
+      loginMock.mockRejectedValue(new Error("INVALID_CREDENTIALS"));
+
+      const event = createEvent({
+        routeKey: "POST /auth/login",
+        body: JSON.stringify({
+          email: "john@example.com",
           password: "wrong-password",
         }),
-        {} as never,
-        () => undefined
-      );
+      });
 
-      expect(response).toEqual({
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 401,
         body: JSON.stringify({
           message: "Invalid email or password.",
@@ -243,84 +437,40 @@ describe("auth lambda handler", () => {
     });
 
     it("should return 400 for invalid email", async () => {
-      loginMock.mockRejectedValueOnce(new Error("INVALID_EMAIL"));
+      loginMock.mockRejectedValue(new Error("INVALID_EMAIL"));
 
-      const response = await handler(
-        createEvent("POST /auth/login", {
-          email: "invalid",
-          password,
+      const event = createEvent({
+        routeKey: "POST /auth/login",
+        body: JSON.stringify({
+          email: "invalid-email",
+          password: "password123",
         }),
-        {} as never,
-        () => undefined
-      );
+      });
 
-      expect(response).toEqual({
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 400,
         body: JSON.stringify({
-          message: ERROR_MESSAGES["INVALID_EMAIL"],
+          message: ERROR_MESSAGES.INVALID_EMAIL,
         }),
       });
-    });
-  });
-
-  describe("GET /auth/me", () => {
-    it("should return the current user", async () => {
-      const user = {
-        id,
-        email,
-      };
-
-      const cookie = "session=valid-token";
-
-      getCurrentUserMock.mockResolvedValueOnce(user);
-
-      const response = await handler(
-        createEvent("GET /auth/me", undefined, cookie),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
-        statusCode: 200,
-        body: JSON.stringify(user),
-      });
-
-      expect(getCurrentUserMock).toHaveBeenCalledWith(cookie);
-    });
-
-    it("should return 401 when the session is unauthorized", async () => {
-      getCurrentUserMock.mockRejectedValueOnce(new Error("UNAUTHORIZED"));
-
-      const response = await handler(
-        createEvent("GET /auth/me", undefined, "session=invalid-token"),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
-        statusCode: 401,
-        body: JSON.stringify({
-          message: "Unauthorized",
-        }),
-      });
-
-      expect(getCurrentUserMock).toHaveBeenCalledWith("session=invalid-token");
     });
   });
 
   describe("POST /auth/logout", () => {
     it("should return 204 and expire the session cookie", async () => {
-      const cookie = "session=; HttpOnly; Max-Age=0";
+      const cookie = `${SESSION_COOKIE_NAME}=; HttpOnly; Secure; Max-Age=0`;
 
-      createSessionCookieMock.mockReturnValueOnce(cookie);
+      createSessionCookieMock.mockReturnValue(cookie);
 
-      const response = await handler(
-        createEvent("POST /auth/logout"),
-        {} as never,
-        () => undefined
-      );
+      const event = createEvent({
+        routeKey: "POST /auth/logout",
+      });
 
-      expect(response).toEqual({
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 204,
         cookies: [cookie],
       });
@@ -331,76 +481,36 @@ describe("auth lambda handler", () => {
 
   describe("unknown routes", () => {
     it("should return 404", async () => {
-      const response = await handler(
-        createEvent("GET /auth/unknown"),
-        {} as never,
-        () => undefined
-      );
+      const event = createEvent({
+        routeKey: "GET /unknown",
+      });
 
-      expect(response).toEqual({
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 404,
         body: JSON.stringify({
           message: "Route not found",
         }),
       });
-
-      expect(signupMock).not.toHaveBeenCalled();
-      expect(loginMock).not.toHaveBeenCalled();
-      expect(getCurrentUserMock).not.toHaveBeenCalled();
     });
   });
 
   describe("unexpected errors", () => {
-    it("should return 500 when signup fails unexpectedly", async () => {
-      signupMock.mockRejectedValueOnce(new Error("Unexpected error"));
+    it("should return 500 for an unhandled service error", async () => {
+      loginMock.mockRejectedValue(new Error("Unexpected error"));
 
-      const response = await handler(
-        createEvent("POST /auth/signup", {
-          email,
-          password,
-        }),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
-        statusCode: 500,
+      const event = createEvent({
+        routeKey: "POST /auth/login",
         body: JSON.stringify({
-          message: "Internal server error",
+          email: "john@example.com",
+          password: "password123",
         }),
       });
-    });
 
-    it("should return 500 when login fails unexpectedly", async () => {
-      loginMock.mockRejectedValueOnce(new Error("Unexpected error"));
+      const result = await handler(event);
 
-      const response = await handler(
-        createEvent("POST /auth/login", {
-          email,
-          password,
-        }),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
-        statusCode: 500,
-        body: JSON.stringify({
-          message: "Internal server error",
-        }),
-      });
-    });
-
-    it("should return 500 when getCurrentUser fails unexpectedly", async () => {
-      getCurrentUserMock.mockRejectedValueOnce(new Error("Unexpected error"));
-
-      const response = await handler(
-        createEvent("GET /auth/me", undefined, "session=valid-token"),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
+      expect(result).toEqual({
         statusCode: 500,
         body: JSON.stringify({
           message: "Internal server error",

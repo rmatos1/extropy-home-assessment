@@ -10,21 +10,24 @@ import {
 } from "./overviewComponents";
 
 export function Overview() {
-  const data = useLoaderData<typeof overviewLoader>();
+  const [categories, reports] = useLoaderData<typeof overviewLoader>();
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex h-full flex-1 flex-col gap-6 p-4">
       <SpendingSummary
-        totalThisMonth={data?.totalThisMonth ?? 0}
-        totalThisYear={data?.totalThisYear ?? 0}
+        totalThisMonth={reports?.totalThisMonth ?? 0}
+        totalThisYear={reports?.totalThisYear ?? 0}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <MonthlySpending data={data?.monthlySpending ?? []} />
-        <SpendingByCategory data={data?.spendingByCategory ?? []} />
+        <MonthlySpending data={reports?.monthlySpending ?? []} />
+        <SpendingByCategory
+          data={reports?.spendingByCategory ?? []}
+          categories={categories}
+        />
       </div>
 
-      <RecentExpenses expenses={data?.recentExpenses ?? []} />
+      <RecentExpenses expenses={reports?.recentExpenses ?? []} />
     </div>
   );
 }

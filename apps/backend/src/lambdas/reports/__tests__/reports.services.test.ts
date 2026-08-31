@@ -1,140 +1,425 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getExpenses } from "../../expenses/expenses.services";
 import { getSpendingReport } from "../reports.services";
-import { mockedExpenses, augustReport } from "./mocks";
-
-const { getExpensesMock } = vi.hoisted(() => ({
-  getExpensesMock: vi.fn(),
-}));
+import type { SpendingReport } from "../reports.types";
 
 vi.mock("../../expenses/expenses.services", () => ({
-  getExpenses: getExpensesMock,
+  getExpenses: vi.fn(),
 }));
 
-describe("reports.services", () => {
-  const userId = mockedExpenses[0].userId;
+const getExpensesMock = vi.mocked(getExpenses);
 
+describe("reports.services", () => {
   beforeEach(() => {
-    getExpensesMock.mockReset();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-30T12:00:00.000Z"));
+
+    vi.resetAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe("getSpendingReport", () => {
-    it("should return an empty report when the user has no expenses", async () => {
-      getExpensesMock.mockResolvedValueOnce([]);
+    it("should return empty report when there are no expenses", async () => {
+      getExpensesMock.mockResolvedValue([]);
 
-      const result = await getSpendingReport(userId);
+      const result = await getSpendingReport("user-123");
 
-      expect(result).toEqual([]);
+      expect(result).toEqual<SpendingReport>({
+        totalThisMonth: 0,
+        totalThisYear: 0,
+        monthlySpending: [],
+        spendingByCategory: [],
+        recentExpenses: [],
+      });
 
-      expect(getExpensesMock).toHaveBeenCalledTimes(1);
       expect(getExpensesMock).toHaveBeenCalledWith({
-        userId,
+        userId: "user-123",
       });
     });
 
-    it("should calculate total spending by month", async () => {
-      getExpensesMock.mockResolvedValueOnce(mockedExpenses);
-
-      const result = await getSpendingReport(userId);
-
-      expect(result).toEqual([
-        { ...augustReport },
+    it("should calculate total spending for the current month", async () => {
+      getExpensesMock.mockResolvedValue([
         {
-          month: "2026-07",
-          total: 5000,
-          categories: [
-            {
-              categoryId: "food",
-              total: 3000,
-            },
-            {
-              categoryId: "transport",
-              total: 2000,
-            },
-          ],
+          id: "expense-1",
+          userId: "user-123",
+          amount: 100,
+          description: "Food",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-10",
         },
         {
-          month: "2026-06",
-          total: 5000,
-          categories: [
-            {
-              categoryId: "entertainment",
-              total: 5000,
-            },
-          ],
+          id: "expense-2",
+          userId: "user-123",
+          amount: 50.5,
+          description: "Transport",
+          categoryId: "transport",
+          categoryName: "Transport",
+          date: "2026-08-20",
+        },
+        {
+          id: "expense-3",
+          userId: "user-123",
+          amount: 200,
+          description: "Bills",
+          categoryId: "bills",
+          categoryName: "Bills",
+          date: "2026-07-15",
         },
       ]);
 
-      expect(getExpensesMock).toHaveBeenCalledWith({
-        userId,
-      });
+      const result = await getSpendingReport("user-123");
+
+      expect(result.totalThisMonth).toBe(150.5);
     });
 
-    it("should group expenses by category within each month", async () => {
-      getExpensesMock.mockResolvedValueOnce(mockedExpenses);
-
-      const result = await getSpendingReport(userId);
-
-      const august = result.find(({ month }) => month === "2026-08");
-
-      expect(august).toEqual({
-        ...augustReport,
-      });
-    });
-
-    it("should sum multiple expenses from the same category in the same month", async () => {
-      const expenses = [
-        ...mockedExpenses,
+    it("should calculate total spending for the current year", async () => {
+      getExpensesMock.mockResolvedValue([
         {
-          ...mockedExpenses[0],
-          id: "expense-007",
-          amount: 1000,
-          description: "Breakfast",
+          id: "expense-1",
+          userId: "user-123",
+          amount: 100,
+          description: "Food",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-10",
         },
-      ];
+        {
+          id: "expense-2",
+          userId: "user-123",
+          amount: 50.5,
+          description: "Transport",
+          categoryId: "transport",
+          categoryName: "Transport",
+          date: "2026-03-20",
+        },
+        {
+          id: "expense-3",
+          userId: "user-123",
+          amount: 200,
+          description: "Bills",
+          categoryId: "bills",
+          categoryName: "Bills",
+          date: "2025-12-15",
+        },
+      ]);
 
-      getExpensesMock.mockResolvedValueOnce(expenses);
+      const result = await getSpendingReport("user-123");
 
-      const result = await getSpendingReport(userId);
-
-      const august = result.find(({ month }) => month === "2026-08");
-
-      expect(august).toEqual({
-        month: "2026-08",
-        total: 9290,
-        categories: [
-          {
-            categoryId: "food",
-            total: 5290,
-          },
-          {
-            categoryId: "transport",
-            total: 1500,
-          },
-          {
-            categoryId: "entertainment",
-            total: 2500,
-          },
-        ],
-      });
+      expect(result.totalThisYear).toBe(150.5);
     });
 
-    it("should sort months from most recent to oldest", async () => {
-      getExpensesMock.mockResolvedValueOnce(mockedExpenses);
+    it("should group spending by month", async () => {
+      getExpensesMock.mockResolvedValue([
+        {
+          id: "expense-1",
+          userId: "user-123",
+          amount: 100,
+          description: "Food",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-10",
+        },
+        {
+          id: "expense-2",
+          userId: "user-123",
+          amount: 50,
+          description: "Transport",
+          categoryId: "transport",
+          categoryName: "Transport",
+          date: "2026-08-20",
+        },
+        {
+          id: "expense-3",
+          userId: "user-123",
+          amount: 200,
+          description: "Bills",
+          categoryId: "bills",
+          categoryName: "Bills",
+          date: "2026-07-15",
+        },
+      ]);
 
-      const result = await getSpendingReport(userId);
+      const result = await getSpendingReport("user-123");
 
-      expect(result.map(({ month }) => month)).toEqual([
+      expect(result.monthlySpending).toEqual([
+        {
+          month: "2026-08",
+          amount: 150,
+        },
+        {
+          month: "2026-07",
+          amount: 200,
+        },
+      ]);
+    });
+
+    it("should sort monthly spending in descending order", async () => {
+      getExpensesMock.mockResolvedValue([
+        {
+          id: "expense-1",
+          userId: "user-123",
+          amount: 100,
+          description: "Food",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-06-10",
+        },
+        {
+          id: "expense-2",
+          userId: "user-123",
+          amount: 50,
+          description: "Transport",
+          categoryId: "transport",
+          categoryName: "Transport",
+          date: "2026-08-20",
+        },
+        {
+          id: "expense-3",
+          userId: "user-123",
+          amount: 75,
+          description: "Bills",
+          categoryId: "bills",
+          categoryName: "Bills",
+          date: "2026-07-15",
+        },
+      ]);
+
+      const result = await getSpendingReport("user-123");
+
+      expect(result.monthlySpending.map((item) => item.month)).toEqual([
         "2026-08",
         "2026-07",
         "2026-06",
       ]);
     });
 
-    it("should propagate errors from getExpenses", async () => {
-      getExpensesMock.mockRejectedValueOnce(new Error("DynamoDB error"));
+    it("should group spending by category", async () => {
+      getExpensesMock.mockResolvedValue([
+        {
+          id: "expense-1",
+          userId: "user-123",
+          amount: 100,
+          description: "Lunch",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-10",
+        },
+        {
+          id: "expense-2",
+          userId: "user-123",
+          amount: 50.5,
+          description: "Dinner",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-20",
+        },
+        {
+          id: "expense-3",
+          userId: "user-123",
+          amount: 200,
+          description: "Electricity",
+          categoryId: "bills",
+          categoryName: "Bills",
+          date: "2026-07-15",
+        },
+      ]);
 
-      await expect(getSpendingReport(userId)).rejects.toThrow("DynamoDB error");
+      const result = await getSpendingReport("user-123");
+
+      expect(result.spendingByCategory).toEqual([
+        {
+          categoryId: "food",
+          categoryName: "Food",
+          amount: 150.5,
+        },
+        {
+          categoryId: "bills",
+          categoryName: "Bills",
+          amount: 200,
+        },
+      ]);
+    });
+
+    it("should preserve category names when grouping by category", async () => {
+      getExpensesMock.mockResolvedValue([
+        {
+          id: "expense-1",
+          userId: "user-123",
+          amount: 100,
+          description: "Subscription",
+          categoryId: "entertainment",
+          categoryName: "Entertainment",
+          date: "2026-08-10",
+        },
+        {
+          id: "expense-2",
+          userId: "user-123",
+          amount: 50,
+          description: "Movie",
+          categoryId: "entertainment",
+          categoryName: "Entertainment",
+          date: "2026-08-20",
+        },
+      ]);
+
+      const result = await getSpendingReport("user-123");
+
+      expect(result.spendingByCategory).toEqual([
+        {
+          categoryId: "entertainment",
+          categoryName: "Entertainment",
+          amount: 150,
+        },
+      ]);
+    });
+
+    it("should return the five most recent expenses sorted by date", async () => {
+      getExpensesMock.mockResolvedValue([
+        {
+          id: "expense-1",
+          userId: "user-123",
+          amount: 10,
+          description: "Expense 1",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-01",
+        },
+        {
+          id: "expense-2",
+          userId: "user-123",
+          amount: 20,
+          description: "Expense 2",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-10",
+        },
+        {
+          id: "expense-3",
+          userId: "user-123",
+          amount: 30,
+          description: "Expense 3",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-15",
+        },
+        {
+          id: "expense-4",
+          userId: "user-123",
+          amount: 40,
+          description: "Expense 4",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-20",
+        },
+        {
+          id: "expense-5",
+          userId: "user-123",
+          amount: 50,
+          description: "Expense 5",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-25",
+        },
+        {
+          id: "expense-6",
+          userId: "user-123",
+          amount: 60,
+          description: "Expense 6",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-28",
+        },
+      ]);
+
+      const result = await getSpendingReport("user-123");
+
+      expect(result.recentExpenses).toHaveLength(5);
+
+      expect(result.recentExpenses.map((expense) => expense.id)).toEqual([
+        "expense-6",
+        "expense-5",
+        "expense-4",
+        "expense-3",
+        "expense-2",
+      ]);
+    });
+
+    it("should keep totals independent from the recent expenses limit", async () => {
+      getExpensesMock.mockResolvedValue([
+        {
+          id: "expense-1",
+          userId: "user-123",
+          amount: 100,
+          description: "Expense 1",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-01",
+        },
+        {
+          id: "expense-2",
+          userId: "user-123",
+          amount: 100,
+          description: "Expense 2",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-02",
+        },
+        {
+          id: "expense-3",
+          userId: "user-123",
+          amount: 100,
+          description: "Expense 3",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-03",
+        },
+        {
+          id: "expense-4",
+          userId: "user-123",
+          amount: 100,
+          description: "Expense 4",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-04",
+        },
+        {
+          id: "expense-5",
+          userId: "user-123",
+          amount: 100,
+          description: "Expense 5",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-05",
+        },
+        {
+          id: "expense-6",
+          userId: "user-123",
+          amount: 100,
+          description: "Expense 6",
+          categoryId: "food",
+          categoryName: "Food",
+          date: "2026-08-06",
+        },
+      ]);
+
+      const result = await getSpendingReport("user-123");
+
+      expect(result.totalThisMonth).toBe(600);
+      expect(result.totalThisYear).toBe(600);
+      expect(result.recentExpenses).toHaveLength(5);
+    });
+
+    it("should propagate errors from getExpenses", async () => {
+      getExpensesMock.mockRejectedValue(new Error("DynamoDB error"));
+
+      await expect(getSpendingReport("user-123")).rejects.toThrow(
+        "DynamoDB error"
+      );
     });
   });
 });

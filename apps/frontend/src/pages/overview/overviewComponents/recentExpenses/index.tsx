@@ -1,10 +1,30 @@
 import type { ExpenseResponse } from "@extropy/shared";
 
-import { currencyFormatter } from "../../../../helpers";
+import { currencyFormatter, formatDate } from "../../../../helpers";
 
 type RecentExpensesProps = {
   expenses: ExpenseResponse[];
 };
+
+type CustomTdProps = {
+  label: string;
+  value: string;
+};
+
+const CustomTd = ({ label, value }: CustomTdProps) => (
+  <td
+    data-label={label}
+    className="
+              px-2 py-3 text-sm text-gray-700
+              max-[480px]:flex max-[480px]:flex-col max-[480px]:items-start max-[480px]:px-2 max-[480px]:py-2
+              max-[480px]:before:font-medium
+              max-[480px]:before:text-gray-500
+              max-[480px]:before:content-[attr(data-label)]
+            "
+  >
+    {value}
+  </td>
+);
 
 export function RecentExpenses({ expenses }: RecentExpensesProps) {
   return (
@@ -13,7 +33,7 @@ export function RecentExpenses({ expenses }: RecentExpensesProps) {
 
       <div className="mt-4 overflow-x-auto">
         <table className="w-full border-collapse">
-          <thead>
+          <thead className="max-[480px]:hidden">
             <tr className="border-b border-gray-200">
               <th className="px-2 py-3 text-left text-sm font-medium text-gray-500">
                 Date
@@ -23,7 +43,7 @@ export function RecentExpenses({ expenses }: RecentExpensesProps) {
                 Expense
               </th>
 
-              <th className="px-2 py-3 text-right text-sm font-medium text-gray-500">
+              <th className="px-2 py-3 text-left text-sm font-medium text-gray-500">
                 Amount
               </th>
             </tr>
@@ -31,19 +51,19 @@ export function RecentExpenses({ expenses }: RecentExpensesProps) {
 
           <tbody>
             {expenses.length > 0 ? (
-              expenses.map((item: ExpenseResponse) => (
-                <tr className="border-b border-gray-100" key={item.id}>
-                  <td className="px-2 py-3 text-sm text-gray-700">
-                    {item.date}
-                  </td>
+              expenses.map((item) => (
+                <tr
+                  className="border-b border-gray-100 max-[480px]:flex max-[480px]:flex-col max-[480px]:py-3"
+                  key={item.id}
+                >
+                  <CustomTd label="Date" value={formatDate(item.date)} />
 
-                  <td className="px-2 py-3 text-sm text-gray-700">
-                    {item.categoryName}
-                  </td>
+                  <CustomTd label="Expense" value={item.description} />
 
-                  <td className="px-2 py-3 text-right text-sm font-medium text-gray-900">
-                    {currencyFormatter.format(item.amount)}
-                  </td>
+                  <CustomTd
+                    label="Amount"
+                    value={currencyFormatter.format(item.amount)}
+                  />
                 </tr>
               ))
             ) : (

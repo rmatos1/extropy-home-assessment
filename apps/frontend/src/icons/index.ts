@@ -5,5 +5,6 @@ export { EyeIcon } from "./eyeIcon";
 export { EyeSlashIcon } from "./eyeSlashIcon";
 export { FolderIcon } from "./folderIcon";
 export { GraphIcon } from "./graphIcon";
+export { MenuIcon } from "./menuIcon";
 export { UserIcon } from "./userIcon";
 export { WalletIcon } from "./walletIcon";

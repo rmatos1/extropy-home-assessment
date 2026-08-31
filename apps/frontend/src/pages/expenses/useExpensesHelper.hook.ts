@@ -1,13 +1,16 @@
-import { useState, useMemo } from "react";
-import { useFetcher, useLoaderData } from "react-router";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useFetcher, useLoaderData, useNavigation } from "react-router";
+import toast from "react-hot-toast";
 import type { Expense, ExpenseResponse } from "@extropy/shared";
 
 import { expensesLoader } from "../../router/loaders";
 
-import { initialExpenseData } from "./expenses.constants";
+import { getColumns, initialExpenseData } from "./expenses.constants";
 
 export const useExpensesHelper = () => {
-  const expenseFetcher = useFetcher();
+  const expensesFetcher = useFetcher();
+  const expensesFormRef = useRef<HTMLFormElement>(null);
+  const navigation = useNavigation();
 
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -18,9 +21,12 @@ export const useExpensesHelper = () => {
     null
   );
 
-  const expenses: ExpenseResponse[] = useLoaderData<typeof expensesLoader>();
+  const { categories, expenses } = useLoaderData<typeof expensesLoader>();
 
-  const isSaving = expenseFetcher.state === "submitting";
+  const isProcessing = expensesFetcher.state === "submitting";
+  const isLoading =
+    navigation.state === "loading" &&
+    navigation.location?.pathname === "/expenses";
 
   const deleteExpenseDescription = useMemo(() => {
     if (!showDeleteModal) {
@@ -32,49 +38,54 @@ export const useExpensesHelper = () => {
     ).description;
   }, [selectedExpenseId, showDeleteModal, expenses]);
 
+  const columns = useMemo(() => {
+    const categoryMap = new Map(
+      categories.map((category) => [category.id, category.name])
+    );
+
+    return getColumns(categoryMap);
+  }, [categories]);
+
+  useEffect(() => {
+    if (expensesFetcher.data?.error) {
+      toast.error(expensesFetcher.data.error);
+      return;
+    }
+
+    if (expensesFetcher.data?.success) {
+      toast.success(expensesFetcher.data.message);
+      expensesFormRef.current?.reset();
+    }
+
+    if (expensesFetcher.data?.operation === "update") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsEditing(false);
+    }
+
+    if (expensesFetcher.data?.operation === "delete") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowDeleteModal(false);
+      setSelectedExpenseId(null);
+    }
+  }, [expensesFetcher.data]);
+
   const onClickAddExpense = () => {
+    setExpenseFormData(initialExpenseData);
     setIsAdding(true);
   };
 
   const onClickEditExpense = (expense: Expense) => {
+    const { id, date, description, categoryId, amount } = expense;
+
     setIsEditing(true);
-    setSelectedExpenseId(expense.id);
+    setSelectedExpenseId(id);
 
     setExpenseFormData({
-      date: expense.date,
-      description: expense.description,
-      category: expense.category,
-      amount: (expense.amount / 100).toFixed(2),
+      date,
+      description,
+      categoryId,
+      amount: amount.toFixed(2),
     });
-  };
-
-  const onChangeFormData = (field: keyof Expense, value: string) => {
-    setExpenseFormData((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  };
-
-  const onSubmitExpense = () => {
-    const { date, description, categoryId, amount } = expenseFormData;
-
-    expenseFetcher.submit(
-      {
-        intent: isEditing ? "update" : "create",
-        expenseId: selectedExpenseId,
-        date,
-        description,
-        categoryId,
-        amount,
-      },
-      {
-        method: isEditing ? "put" : "post",
-      }
-    );
-
-    if (isEditing) {
-      setIsEditing(false);
-    }
   };
 
   const onCancelExpenseForm = () => {
@@ -100,25 +111,42 @@ export const useExpensesHelper = () => {
   };
 
   const onConfirmDelete = () => {
-    return;
+    console.log("selectedId", selectedExpenseId);
+    if (!selectedExpenseId) {
+      return;
+    }
+
+    expensesFetcher.submit(
+      {
+        intent: "delete",
+        expenseId: selectedExpenseId,
+      },
+      {
+        method: "post",
+        action: "/expenses",
+      }
+    );
   };
 
   return {
+    expensesFetcher,
+    expensesFormRef,
     isAdding,
     onClickAddExpense,
     isEditing,
-    isSaving,
+    isProcessing,
     expenses,
+    categories,
     expenseFormData,
     selectedExpenseId,
     onClickEditExpense,
-    onChangeFormData,
-    onSubmitExpense,
     onCancelExpenseForm,
     onClickDeleteExpense,
     showDeleteModal,
     deleteExpenseDescription,
     onCloseModal,
     onConfirmDelete,
+    columns,
+    isLoading,
   };
 };

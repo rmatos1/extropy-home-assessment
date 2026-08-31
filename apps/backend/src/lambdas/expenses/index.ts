@@ -6,8 +6,10 @@ import {
   getExpenses,
   updateExpense,
 } from "./expenses.services";
+import { suggestExpenseCategory } from "./expenses.ai";
 import { ERROR_MESSAGES } from "./expenses.constants";
 import { getAuthenticatedUserId } from "../auth/auth.helpers";
+import { getCategories } from "../categories/categories.services";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
@@ -105,6 +107,44 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
       return {
         statusCode: 204,
+      };
+    }
+
+    if (event.routeKey === "POST /expenses/suggest-category") {
+      if (!event.body) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            message: "Request body is required",
+          }),
+        };
+      }
+
+      const { description } = JSON.parse(event.body);
+
+      const categories = await getCategories(userId);
+
+      const suggestion = await suggestExpenseCategory({
+        description,
+        categories,
+      });
+
+      if (
+        suggestion.categoryId !== null &&
+        !categories.some((category) => category.id === suggestion.categoryId)
+      ) {
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            categoryId: null,
+            confidence: 0,
+          }),
+        };
+      }
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify(suggestion),
       };
     }
 

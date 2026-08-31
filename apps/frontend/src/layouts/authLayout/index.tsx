@@ -1,14 +1,17 @@
-import { Outlet } from "react-router";
-import { Toaster } from "react-hot-toast";
+import { Outlet, useNavigation } from "react-router";
+import { LoadingScreen } from "../../components";
 
 export function AuthLayout() {
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "loading";
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-200">
-      <section className="bg-white w-md m-2 rounded-b-xl shadow-sm">
+      {isLoading && <LoadingScreen />}
+
+      <section className="m-2 w-md rounded-xl bg-white shadow-sm">
         <Outlet />
       </section>
-
-      <Toaster position="top-right" />
     </main>
   );
 }

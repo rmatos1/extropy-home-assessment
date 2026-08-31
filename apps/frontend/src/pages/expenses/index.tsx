@@ -1,40 +1,43 @@
 import type { Expense } from "@extropy/shared";
 
-import { ActionButton, DashboardTable } from "../../components";
-import { DeleteExpenseModal } from "../../modals";
+import { ActionButton, DashboardTable, DefaultModal } from "../../components";
 import { useExpensesHelper } from "./useExpensesHelper.hook";
 
-import { ActionsRow, FormRow } from "./expensesComponents";
-import { columns } from "./expenses.constants";
+import { ActionsRow, FilterForm, FormRow } from "./expensesComponents";
+
+const formId = "expense-form";
 
 export function Expenses() {
   const {
+    expensesFetcher,
+    expensesFormRef,
     isAdding,
     onClickAddExpense,
     isEditing,
-    isSaving,
+    isProcessing,
     expenses,
+    categories,
     expenseFormData,
     selectedExpenseId,
     onClickEditExpense,
-    onChangeFormData,
-    onSubmitExpense,
     onCancelExpenseForm,
     onClickDeleteExpense,
     showDeleteModal,
     deleteExpenseDescription,
     onCloseModal,
     onConfirmDelete,
+    columns,
+    isLoading,
   } = useExpensesHelper();
 
   function renderFormRow() {
     return (
       <FormRow
+        form={formId}
         formData={expenseFormData}
+        categories={categories}
         isEditing={isEditing}
-        isSaving={isSaving}
-        onChange={onChangeFormData}
-        onSave={onSubmitExpense}
+        isSaving={isProcessing}
         onCancel={onCancelExpenseForm}
       />
     );
@@ -43,7 +46,7 @@ export function Expenses() {
   function renderActions(expense: Expense) {
     return (
       <ActionsRow
-        isDisabled={isAdding || isSaving}
+        isDisabled={isAdding || isProcessing}
         onClickEdit={() => onClickEditExpense(expense)}
         onClickDelete={() => onClickDeleteExpense(expense)}
       />
@@ -53,23 +56,48 @@ export function Expenses() {
   return (
     <>
       {showDeleteModal && (
-        <DeleteExpenseModal
-          expenseDescription={deleteExpenseDescription}
+        <DefaultModal
+          title="Delete expense"
+          description={`Are you sure you want to delete ${deleteExpenseDescription}?`}
           onClose={onCloseModal}
+          confirmTextButton="Delete"
           onConfirm={onConfirmDelete}
+          isProcessing={isProcessing}
+          processingText="deleting..."
         />
       )}
       <div className="bg-white flex flex-1 flex-col m-4 rounded-xl shadow-sm border-box p-4 gap-4">
-        <div className="flex justify-end">
+        <div className="flex items-end gap-4 max-md:flex-col max-md:items-start">
+          <FilterForm
+            categories={categories}
+            isDisabled={isAdding || isEditing}
+          />
+
           <ActionButton
             text="Add expense"
             onClick={onClickAddExpense}
             isDisabled={isAdding || isEditing}
-            customClasses="px-4"
+            customClasses="shrink-0 px-4 max-md:mt-4 max-md:self-end"
           />
         </div>
 
         <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <expensesFetcher.Form id={formId} method="post" ref={expensesFormRef}>
+            <input
+              type="hidden"
+              name="intent"
+              value={isEditing ? "update" : "create"}
+            />
+
+            {isEditing && (
+              <input
+                type="hidden"
+                name="expenseId"
+                value={selectedExpenseId ?? ""}
+              />
+            )}
+          </expensesFetcher.Form>
+
           <DashboardTable
             tableKey="expenses-table"
             columns={columns}
@@ -79,7 +107,18 @@ export function Expenses() {
             editingRowId={selectedExpenseId}
             renderFormRow={renderFormRow}
             renderActions={renderActions}
-            emptyMsg="No expense records yet."
+            emptyMsg="No expense records"
+            initialSorting={[
+              {
+                id: "date",
+                desc: true,
+              },
+            ]}
+            isLoading={isLoading}
+            customClasses={{
+              th: "max-md:hidden",
+              td: "max-md:block max-md:w-full max-md:flex max-md:items-start max-md:flex-col max-md:before:mr-4 max-md:before:font-medium max-md:before:text-gray-500 max-md:before:content-[attr(data-label)]",
+            }}
           />
         </div>
       </div>

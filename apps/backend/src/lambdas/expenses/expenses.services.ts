@@ -82,7 +82,7 @@ export async function getExpenses({
   startDate,
   endDate,
   categoryId,
-}: GetExpensesInput): Promise<Expense[]> {
+}: GetExpensesInput): Promise<ExpenseResponse[]> {
   if (startDate) {
     validateDate(startDate);
   }
@@ -109,5 +109,5 @@ export async function getExpenses({
     );
   }
 
-  return expenses;
+  return expenses.map(({ userId: _userId, ...expense }) => expense);
 }

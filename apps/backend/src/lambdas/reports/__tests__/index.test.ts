@@ -1,164 +1,151 @@
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getAuthenticatedUserId } from "../../auth/auth.helpers";
+import { getSpendingReport } from "../reports.services";
 import { handler } from "../index";
-import { mockedExpenses, augustReport } from "./mocks";
-
-const { getAuthenticatedUserIdMock, getSpendingReportMock } = vi.hoisted(
-  () => ({
-    getAuthenticatedUserIdMock: vi.fn(),
-    getSpendingReportMock: vi.fn(),
-  })
-);
 
 vi.mock("../../auth/auth.helpers", () => ({
-  getAuthenticatedUserId: getAuthenticatedUserIdMock,
+  getAuthenticatedUserId: vi.fn(),
 }));
 
 vi.mock("../reports.services", () => ({
-  getSpendingReport: getSpendingReportMock,
+  getSpendingReport: vi.fn(),
 }));
 
-const createEvent = ({
-  routeKey,
-  authorization,
-}: {
-  routeKey: string;
-  authorization?: string;
-}): APIGatewayProxyEventV2 =>
+const getAuthenticatedUserIdMock = vi.mocked(getAuthenticatedUserId);
+const getSpendingReportMock = vi.mocked(getSpendingReport);
+
+const createEvent = (
+  overrides: Partial<APIGatewayProxyEventV2> = {}
+): APIGatewayProxyEventV2 =>
   ({
-    routeKey,
-    headers: authorization
-      ? {
-          authorization,
-        }
-      : {},
-  } as unknown as APIGatewayProxyEventV2);
+    version: "2.0",
+    routeKey: "$default",
+    rawPath: "/",
+    rawQueryString: "",
+    headers: {},
+    requestContext: {} as APIGatewayProxyEventV2["requestContext"],
+    isBase64Encoded: false,
+    ...overrides,
+  } as APIGatewayProxyEventV2);
 
-describe("reports lambda handler", () => {
-  const userId = mockedExpenses[0].userId;
-
+describe("reports handler", () => {
   beforeEach(() => {
-    getAuthenticatedUserIdMock.mockReset();
-    getSpendingReportMock.mockReset();
-
-    getAuthenticatedUserIdMock.mockReturnValue(userId);
+    vi.resetAllMocks();
   });
 
-  describe("authentication", () => {
-    it("should return 401 when authentication fails", async () => {
-      getAuthenticatedUserIdMock.mockImplementationOnce(() => {
-        throw new Error("UNAUTHORIZED");
+  describe("GET /spending-report", () => {
+    it("should return the spending report", async () => {
+      const userId = "user-123";
+
+      const report = {
+        totalThisMonth: 450.75,
+        totalThisYear: 3200.5,
+        monthlySpending: [
+          {
+            month: "2026-08",
+            amount: 450.75,
+          },
+        ],
+        spendingByCategory: [
+          {
+            categoryId: "food",
+            categoryName: "Food",
+            amount: 200,
+          },
+        ],
+        recentExpenses: [
+          {
+            id: "expense-1",
+            userId,
+            amount: 50,
+            description: "Lunch",
+            categoryId: "food",
+            categoryName: "Food",
+            date: "2026-08-30",
+          },
+        ],
+      };
+
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+      getSpendingReportMock.mockResolvedValue(report);
+
+      const event = createEvent({
+        routeKey: "GET /spending-report",
+        cookies: ["session=token"],
       });
 
-      const response = await handler(
-        createEvent({
-          routeKey: "GET /spending-report",
-          authorization: "Bearer invalid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
+      const result = await handler(event);
 
-      expect(response).toEqual({
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify(report),
+      });
+
+      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith([
+        "session=token",
+      ]);
+
+      expect(getSpendingReportMock).toHaveBeenCalledWith(userId);
+    });
+
+    it("should return 401 when authentication fails", async () => {
+      getAuthenticatedUserIdMock.mockRejectedValue(new Error("UNAUTHORIZED"));
+
+      const event = createEvent({
+        routeKey: "GET /spending-report",
+        cookies: ["session=invalid"],
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 401,
         body: JSON.stringify({
           message: "Unauthorized",
         }),
       });
 
-      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith(
-        "Bearer invalid-token"
-      );
-
       expect(getSpendingReportMock).not.toHaveBeenCalled();
     });
-  });
 
-  describe("GET /spending-report", () => {
-    it("should return the spending report", async () => {
-      const report = [augustReport];
+    it("should return 500 when generating the report fails unexpectedly", async () => {
+      const userId = "user-123";
 
-      getSpendingReportMock.mockResolvedValueOnce(report);
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+      getSpendingReportMock.mockRejectedValue(new Error("DynamoDB error"));
 
-      const response = await handler(
-        createEvent({
-          routeKey: "GET /spending-report",
-          authorization: "Bearer valid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
-        statusCode: 200,
-        body: JSON.stringify(report),
+      const event = createEvent({
+        routeKey: "GET /spending-report",
+        cookies: ["session=token"],
       });
 
-      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith(
-        "Bearer valid-token"
-      );
+      const result = await handler(event);
 
-      expect(getSpendingReportMock).toHaveBeenCalledWith(userId);
-    });
-
-    it("should return an empty report when there are no expenses", async () => {
-      getSpendingReportMock.mockResolvedValueOnce([]);
-
-      const response = await handler(
-        createEvent({
-          routeKey: "GET /spending-report",
-          authorization: "Bearer valid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
-        statusCode: 200,
-        body: JSON.stringify([]),
-      });
-
-      expect(getSpendingReportMock).toHaveBeenCalledWith(userId);
-    });
-
-    it("should return 500 when getSpendingReport fails unexpectedly", async () => {
-      getSpendingReportMock.mockRejectedValueOnce(
-        new Error("Unexpected error")
-      );
-
-      const response = await handler(
-        createEvent({
-          routeKey: "GET /spending-report",
-          authorization: "Bearer valid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
+      expect(result).toEqual({
         statusCode: 500,
         body: JSON.stringify({
           message: "Internal server error",
         }),
       });
-
-      expect(getSpendingReportMock).toHaveBeenCalledWith(userId);
     });
   });
 
   describe("unknown routes", () => {
-    it("should return 404", async () => {
-      const response = await handler(
-        createEvent({
-          routeKey: "GET /spending-report/unknown",
-          authorization: "Bearer valid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
+    it("should return 404 for an unknown route", async () => {
+      const userId = "user-123";
 
-      expect(response).toEqual({
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+
+      const event = createEvent({
+        routeKey: "GET /unknown",
+        cookies: ["session=token"],
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 404,
         body: JSON.stringify({
           message: "Route not found",

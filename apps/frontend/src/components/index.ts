@@ -1,6 +1,10 @@
 export { ActionButton } from "./actionButton";
 export { DashboardSideMenu } from "./dashboardSideMenu";
 export { DashboardTable } from "./dashboardTable";
+export { DefaultModal } from "./defaultModal";
+export { ErrorBoundary } from "./errorBoundary";
 export { InputGroup } from "./inputGroup";
 export { LinkComponent } from "./linkComponent";
+export { LoadingScreen } from "./loadingScreen";
 export { PasswordInput } from "./passwordInput";
+export { TableFormActions } from "./tableFormActions";

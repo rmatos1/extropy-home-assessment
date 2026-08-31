@@ -14,7 +14,8 @@ const serverlessConfiguration = {
       USERS_TABLE_NAME: "extropy-users",
       EXPENSES_TABLE_NAME: "extropy-expenses",
       CATEGORIES_TABLE_NAME: "extropy-categories",
-      JWT_SECRET: "extropy_S3cret_@2",
+      JWT_SECRET: "${env:JWT_SECRET}",
+      OPENAI_API_KEY: "${env:OPENAI_API_KEY}",
     },
 
     httpApi: {
@@ -161,6 +162,12 @@ const serverlessConfiguration = {
           httpApi: {
             method: "DELETE",
             path: "/expenses/{id}",
+          },
+        },
+        {
+          httpApi: {
+            method: "POST",
+            path: "/expenses/suggest-category",
           },
         },
       ],

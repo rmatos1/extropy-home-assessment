@@ -1,181 +1,155 @@
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getAuthenticatedUserId } from "../../auth/auth.helpers";
+import { createCategory, getCategories } from "../categories.services";
 import { handler } from "../index";
-import { mockedCategory } from "./mocks";
-
-const { createCategoryMock, getAuthenticatedUserIdMock, getCategoriesMock } =
-  vi.hoisted(() => ({
-    createCategoryMock: vi.fn(),
-    getAuthenticatedUserIdMock: vi.fn(),
-    getCategoriesMock: vi.fn(),
-  }));
-
-vi.mock("../categories.services", () => ({
-  createCategory: createCategoryMock,
-  getCategories: getCategoriesMock,
-}));
 
 vi.mock("../../auth/auth.helpers", () => ({
-  getAuthenticatedUserId: getAuthenticatedUserIdMock,
+  getAuthenticatedUserId: vi.fn(),
 }));
 
-const createEvent = ({
-  routeKey,
-  authorization,
-  body,
-}: {
-  routeKey: string;
-  authorization?: string;
-  body?: unknown;
-}): APIGatewayProxyEventV2 =>
+vi.mock("../categories.services", () => ({
+  createCategory: vi.fn(),
+  getCategories: vi.fn(),
+}));
+
+const getAuthenticatedUserIdMock = vi.mocked(getAuthenticatedUserId);
+const createCategoryMock = vi.mocked(createCategory);
+const getCategoriesMock = vi.mocked(getCategories);
+
+const createEvent = (
+  overrides: Partial<APIGatewayProxyEventV2> = {}
+): APIGatewayProxyEventV2 =>
   ({
-    routeKey,
-    headers: authorization
-      ? {
-          authorization,
-        }
-      : {},
-    body: body === undefined ? undefined : JSON.stringify(body),
-  } as unknown as APIGatewayProxyEventV2);
+    version: "2.0",
+    routeKey: "$default",
+    rawPath: "/",
+    rawQueryString: "",
+    headers: {},
+    requestContext: {} as APIGatewayProxyEventV2["requestContext"],
+    isBase64Encoded: false,
+    ...overrides,
+  } as APIGatewayProxyEventV2);
 
-describe("categories lambda handler", () => {
-  const { id, userId, name, createdAt, updatedAt } = mockedCategory;
-
+describe("categories handler", () => {
   beforeEach(() => {
-    createCategoryMock.mockReset();
-    getAuthenticatedUserIdMock.mockReset();
-    getCategoriesMock.mockReset();
-
-    getAuthenticatedUserIdMock.mockReturnValue(userId);
+    vi.resetAllMocks();
   });
 
   describe("authentication", () => {
-    it("should return 401 when authentication fails", async () => {
-      getAuthenticatedUserIdMock.mockImplementationOnce(() => {
-        throw new Error("UNAUTHORIZED");
+    it("should return 401 when the user is not authenticated", async () => {
+      getAuthenticatedUserIdMock.mockResolvedValue("");
+
+      const event = createEvent({
+        routeKey: "GET /categories",
+        cookies: ["session=token"],
       });
 
-      const response = await handler(
-        createEvent({
-          routeKey: "GET /categories",
-          authorization: "Bearer invalid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
+      const result = await handler(event);
 
-      expect(response).toEqual({
+      expect(result).toEqual({
         statusCode: 401,
         body: JSON.stringify({
           message: "Unauthorized",
         }),
       });
 
-      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith(
-        "Bearer invalid-token"
-      );
-
       expect(getCategoriesMock).not.toHaveBeenCalled();
       expect(createCategoryMock).not.toHaveBeenCalled();
+    });
+
+    it("should return 401 when authentication fails", async () => {
+      getAuthenticatedUserIdMock.mockRejectedValue(new Error("UNAUTHORIZED"));
+
+      const event = createEvent({
+        routeKey: "GET /categories",
+        cookies: ["session=invalid"],
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 401,
+        body: JSON.stringify({
+          message: "Unauthorized",
+        }),
+      });
     });
   });
 
   describe("GET /categories", () => {
-    it("should return categories for the authenticated user", async () => {
-      const categories = [mockedCategory];
+    it("should return the user's categories", async () => {
+      const userId = "user-123";
 
-      getCategoriesMock.mockResolvedValueOnce(categories);
+      const categories = [
+        {
+          id: "food",
+          userId,
+          name: "Food",
+        },
+        {
+          id: "bills",
+          userId,
+          name: "Bills",
+        },
+      ];
 
-      const response = await handler(
-        createEvent({
-          routeKey: "GET /categories",
-          authorization: "Bearer valid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+      getCategoriesMock.mockResolvedValue(categories);
 
-      expect(response).toEqual({
+      const event = createEvent({
+        routeKey: "GET /categories",
+        cookies: ["session=token"],
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 200,
         body: JSON.stringify(categories),
       });
 
-      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith(
-        "Bearer valid-token"
-      );
-
+      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith([
+        "session=token",
+      ]);
       expect(getCategoriesMock).toHaveBeenCalledWith(userId);
-      expect(createCategoryMock).not.toHaveBeenCalled();
     });
 
-    it("should return 500 when getCategories fails unexpectedly", async () => {
-      getCategoriesMock.mockRejectedValueOnce(new Error("Unexpected error"));
+    it("should return an empty list when the user has no categories", async () => {
+      const userId = "user-123";
 
-      const response = await handler(
-        createEvent({
-          routeKey: "GET /categories",
-          authorization: "Bearer valid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+      getCategoriesMock.mockResolvedValue([]);
 
-      expect(response).toEqual({
-        statusCode: 500,
-        body: JSON.stringify({
-          message: "Internal server error",
-        }),
+      const event = createEvent({
+        routeKey: "GET /categories",
+        cookies: ["session=token"],
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify([]),
       });
     });
   });
 
   describe("POST /categories", () => {
-    it("should return 201 when the category is created", async () => {
-      const categoryResponse = {
-        id,
-        name,
-        createdAt,
-        updatedAt,
-      };
+    it("should return 400 when the request body is missing", async () => {
+      const userId = "user-123";
 
-      createCategoryMock.mockResolvedValueOnce(categoryResponse);
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
 
-      const response = await handler(
-        createEvent({
-          routeKey: "POST /categories",
-          authorization: "Bearer valid-token",
-          body: name,
-        }),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
-        statusCode: 201,
-        body: JSON.stringify(categoryResponse),
+      const event = createEvent({
+        routeKey: "POST /categories",
+        cookies: ["session=token"],
       });
 
-      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith(
-        "Bearer valid-token"
-      );
+      const result = await handler(event);
 
-      expect(createCategoryMock).toHaveBeenCalledWith(userId, name);
-
-      expect(getCategoriesMock).not.toHaveBeenCalled();
-    });
-
-    it("should return 400 when the request body is missing", async () => {
-      const response = await handler(
-        createEvent({
-          routeKey: "POST /categories",
-          authorization: "Bearer valid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
-
-      expect(response).toEqual({
+      expect(result).toEqual({
         statusCode: 400,
         body: JSON.stringify({
           message: "Request body is required",
@@ -185,22 +159,58 @@ describe("categories lambda handler", () => {
       expect(createCategoryMock).not.toHaveBeenCalled();
     });
 
-    it("should return 400 when the category name is invalid", async () => {
-      createCategoryMock.mockRejectedValueOnce(
-        new Error("INVALID_CATEGORY_NAME")
-      );
+    it("should create a category", async () => {
+      const userId = "user-123";
 
-      const response = await handler(
-        createEvent({
-          routeKey: "POST /categories",
-          authorization: "Bearer valid-token",
-          body: "   ",
+      const categoryName = "Food";
+
+      const category = {
+        id: "food",
+        userId,
+        name: categoryName,
+      };
+
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+      createCategoryMock.mockResolvedValue(category);
+
+      const event = createEvent({
+        routeKey: "POST /categories",
+        cookies: ["session=token"],
+        body: JSON.stringify({
+          categoryName,
         }),
-        {} as never,
-        () => undefined
-      );
+      });
 
-      expect(response).toEqual({
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 201,
+        body: JSON.stringify(category),
+      });
+
+      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith([
+        "session=token",
+      ]);
+      expect(createCategoryMock).toHaveBeenCalledWith(userId, categoryName);
+    });
+
+    it("should return 400 for an invalid category name", async () => {
+      const userId = "user-123";
+
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+      createCategoryMock.mockRejectedValue(new Error("INVALID_CATEGORY_NAME"));
+
+      const event = createEvent({
+        routeKey: "POST /categories",
+        cookies: ["session=token"],
+        body: JSON.stringify({
+          categoryName: "",
+        }),
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 400,
         body: JSON.stringify({
           message: "Invalid category name",
@@ -208,20 +218,44 @@ describe("categories lambda handler", () => {
       });
     });
 
-    it("should return 500 when createCategory fails unexpectedly", async () => {
-      createCategoryMock.mockRejectedValueOnce(new Error("Unexpected error"));
+    it("should return 500 for an unexpected service error", async () => {
+      const userId = "user-123";
 
-      const response = await handler(
-        createEvent({
-          routeKey: "POST /categories",
-          authorization: "Bearer valid-token",
-          body: name,
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+      getCategoriesMock.mockRejectedValue(new Error("DynamoDB error"));
+
+      const event = createEvent({
+        routeKey: "GET /categories",
+        cookies: ["session=token"],
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
+        statusCode: 500,
+        body: JSON.stringify({
+          message: "Internal server error",
         }),
-        {} as never,
-        () => undefined
-      );
+      });
+    });
 
-      expect(response).toEqual({
+    it("should return 500 when category creation fails unexpectedly", async () => {
+      const userId = "user-123";
+
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+      createCategoryMock.mockRejectedValue(new Error("Unexpected error"));
+
+      const event = createEvent({
+        routeKey: "POST /categories",
+        cookies: ["session=token"],
+        body: JSON.stringify({
+          categoryName: "Food",
+        }),
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 500,
         body: JSON.stringify({
           message: "Internal server error",
@@ -231,25 +265,24 @@ describe("categories lambda handler", () => {
   });
 
   describe("unknown routes", () => {
-    it("should return 404", async () => {
-      const response = await handler(
-        createEvent({
-          routeKey: "GET /categories/unknown",
-          authorization: "Bearer valid-token",
-        }),
-        {} as never,
-        () => undefined
-      );
+    it("should return 404 for an unknown route", async () => {
+      const userId = "user-123";
 
-      expect(response).toEqual({
+      getAuthenticatedUserIdMock.mockResolvedValue(userId);
+
+      const event = createEvent({
+        routeKey: "GET /unknown",
+        cookies: ["session=token"],
+      });
+
+      const result = await handler(event);
+
+      expect(result).toEqual({
         statusCode: 404,
         body: JSON.stringify({
           message: "Route not found",
         }),
       });
-
-      expect(getCategoriesMock).not.toHaveBeenCalled();
-      expect(createCategoryMock).not.toHaveBeenCalled();
     });
   });
 });

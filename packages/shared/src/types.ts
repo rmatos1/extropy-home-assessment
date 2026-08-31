@@ -36,6 +36,19 @@ export type UpdateExpenseInput = DeleteExpenseInput & {
   expense: Expense;
 };
 
+export type SuggestCategoryInput = {
+  description: string;
+  categories: {
+    id: string;
+    name: string;
+  }[];
+};
+
+export type SuggestCategoryResponse = {
+  categoryId: string | null;
+  confidence: number;
+};
+
 export type Category = {
   id: string;
   name: string;

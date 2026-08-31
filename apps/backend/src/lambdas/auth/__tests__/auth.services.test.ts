@@ -1,273 +1,477 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { User } from "@extropy/shared";
+import type { User, ProfileUpdateInput } from "@extropy/shared";
 
-import { getCurrentUser, login, signup } from "../auth.services";
+import {
+  createUser,
+  getUserByEmail,
+  getUserById,
+  updateUser,
+} from "../auth.repository";
 import { BCRYPT_SALT_ROUNDS } from "../auth.constants";
+import {
+  generateToken,
+  getAuthenticatedUserId,
+  validateEmail,
+  validatePassword,
+} from "../auth.helpers";
+import { getCurrentUser, login, signup, updateProfile } from "../auth.services";
+import type { LoginInput, SignupInput } from "../auth.types";
 import { mockedUser } from "./mocks";
 
-const { createUserMock, getUserByEmailMock, getUserByIdMock } = vi.hoisted(
-  () => ({
-    createUserMock: vi.fn(),
-    getUserByEmailMock: vi.fn(),
-    getUserByIdMock: vi.fn(),
-  })
-);
-
-const {
-  generateTokenMock,
-  getAuthenticatedUserIdMock,
-  validateEmailMock,
-  validatePasswordMock,
-} = vi.hoisted(() => ({
-  generateTokenMock: vi.fn(),
-  getAuthenticatedUserIdMock: vi.fn(),
-  validateEmailMock: vi.fn(),
-  validatePasswordMock: vi.fn(),
+vi.mock("bcryptjs", () => ({
+  default: {
+    hash: vi.fn(),
+    compare: vi.fn(),
+  },
 }));
 
 vi.mock("../auth.repository", () => ({
-  createUser: createUserMock,
-  getUserByEmail: getUserByEmailMock,
-  getUserById: getUserByIdMock,
+  createUser: vi.fn(),
+  getUserByEmail: vi.fn(),
+  getUserById: vi.fn(),
+  updateUser: vi.fn(),
 }));
 
 vi.mock("../auth.helpers", () => ({
-  generateToken: generateTokenMock,
-  getAuthenticatedUserId: getAuthenticatedUserIdMock,
-  validateEmail: validateEmailMock,
-  validatePassword: validatePasswordMock,
+  generateToken: vi.fn(),
+  getAuthenticatedUserId: vi.fn(),
+  validateEmail: vi.fn(),
+  validatePassword: vi.fn(),
 }));
 
-const jwtSecret = process.env.JWT_SECRET;
+const hashMock = vi.mocked(bcrypt.hash);
+const compareMock = vi.mocked(bcrypt.compare);
 
-if (!jwtSecret) {
-  throw new Error("JWT_SECRET is not configured for tests");
-}
+const createUserMock = vi.mocked(createUser);
+const getUserByEmailMock = vi.mocked(getUserByEmail);
+const getUserByIdMock = vi.mocked(getUserById);
+const updateUserMock = vi.mocked(updateUser);
 
-describe("auth.service", () => {
-  const { id, email, password } = mockedUser;
+const generateTokenMock = vi.mocked(generateToken);
+const getAuthenticatedUserIdMock = vi.mocked(getAuthenticatedUserId);
+const validateEmailMock = vi.mocked(validateEmail);
+const validatePasswordMock = vi.mocked(validatePassword);
 
+describe("auth.services", () => {
   beforeEach(() => {
-    createUserMock.mockReset();
-    getUserByEmailMock.mockReset();
-    getUserByIdMock.mockReset();
-
-    generateTokenMock.mockReset();
-    getAuthenticatedUserIdMock.mockReset();
-    validateEmailMock.mockReset();
-    validatePasswordMock.mockReset();
+    vi.resetAllMocks();
   });
 
   describe("signup", () => {
-    it("should create a user and return the generated token", async () => {
-      const token = "generated-token";
+    const input: SignupInput = {
+      email: "  JOHN@EXAMPLE.COM  ",
+      password: "password123",
+    };
 
-      getUserByEmailMock.mockResolvedValueOnce(undefined);
-      createUserMock.mockResolvedValueOnce(undefined);
-      generateTokenMock.mockReturnValueOnce(token);
+    it("should create a user and return a token", async () => {
+      const passwordHash = "hashed-password";
+      const token = "jwt-token";
 
-      const result = await signup({
-        email: " John@Example.com ",
-        password,
-      });
+      getUserByEmailMock.mockResolvedValue(undefined);
+      hashMock.mockResolvedValue(passwordHash as never);
+      createUserMock.mockResolvedValue(undefined);
+      generateTokenMock.mockReturnValue(token);
+
+      const result = await signup(input);
 
       expect(result).toBe(token);
 
-      expect(validateEmailMock).toHaveBeenCalledWith(email);
-      expect(validatePasswordMock).toHaveBeenCalledWith(password);
+      expect(validateEmailMock).toHaveBeenCalledWith("john@example.com");
+      expect(validatePasswordMock).toHaveBeenCalledWith(input.password);
 
-      expect(getUserByEmailMock).toHaveBeenCalledWith(email);
+      expect(getUserByEmailMock).toHaveBeenCalledWith("john@example.com");
+
+      expect(hashMock).toHaveBeenCalledWith(input.password, BCRYPT_SALT_ROUNDS);
+
       expect(createUserMock).toHaveBeenCalledTimes(1);
 
-      const createdUser = createUserMock.mock.calls[0][0] as User;
+      const user = createUserMock.mock.calls[0][0];
 
-      expect(createdUser).toMatchObject({
-        email,
+      expect(user).toEqual({
+        id: expect.any(String),
+        email: "john@example.com",
+        passwordHash,
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
       });
 
-      expect(createdUser.id).toEqual(expect.any(String));
-      expect(createdUser.passwordHash).not.toBe(password);
-
-      expect(await bcrypt.compare(password, createdUser.passwordHash)).toBe(
-        true
-      );
-
-      expect(createdUser.createdAt).toEqual(expect.any(String));
-      expect(createdUser.updatedAt).toEqual(expect.any(String));
-
-      expect(generateTokenMock).toHaveBeenCalledWith(createdUser);
+      expect(generateTokenMock).toHaveBeenCalledWith(user);
     });
 
-    it("should reject an email that is already registered", async () => {
-      getUserByEmailMock.mockResolvedValueOnce(mockedUser);
+    it("should reject when the email already exists", async () => {
+      getUserByEmailMock.mockResolvedValue(mockedUser);
 
-      await expect(
-        signup({
-          email,
-          password,
-        })
-      ).rejects.toThrow("USER_EMAIL_ALREADY_EXISTS");
+      await expect(signup(input)).rejects.toThrow("USER_EMAIL_ALREADY_EXISTS");
 
+      expect(hashMock).not.toHaveBeenCalled();
       expect(createUserMock).not.toHaveBeenCalled();
       expect(generateTokenMock).not.toHaveBeenCalled();
     });
 
-    it("should not access the repository when email validation fails", async () => {
-      validateEmailMock.mockImplementationOnce(() => {
+    it("should normalize the email before checking for an existing user", async () => {
+      getUserByEmailMock.mockResolvedValue(undefined);
+      hashMock.mockResolvedValue("hashed-password" as never);
+      generateTokenMock.mockReturnValue("token");
+
+      await signup(input);
+
+      expect(getUserByEmailMock).toHaveBeenCalledWith("john@example.com");
+    });
+
+    it("should propagate email validation errors", async () => {
+      validateEmailMock.mockImplementation(() => {
         throw new Error("INVALID_EMAIL");
       });
 
-      await expect(
-        signup({
-          email: "invalid-email",
-          password,
-        })
-      ).rejects.toThrow("INVALID_EMAIL");
+      await expect(signup(input)).rejects.toThrow("INVALID_EMAIL");
 
-      expect(validateEmailMock).toHaveBeenCalledWith("invalid-email");
-      expect(validatePasswordMock).not.toHaveBeenCalled();
       expect(getUserByEmailMock).not.toHaveBeenCalled();
+      expect(hashMock).not.toHaveBeenCalled();
       expect(createUserMock).not.toHaveBeenCalled();
     });
 
-    it("should not access the repository when password validation fails", async () => {
-      validatePasswordMock.mockImplementationOnce(() => {
+    it("should propagate password validation errors", async () => {
+      validatePasswordMock.mockImplementation(() => {
         throw new Error("INVALID_PASSWORD");
       });
 
-      await expect(
-        signup({
-          email,
-          password: "short",
-        })
-      ).rejects.toThrow("INVALID_PASSWORD");
+      await expect(signup(input)).rejects.toThrow("INVALID_PASSWORD");
 
       expect(getUserByEmailMock).not.toHaveBeenCalled();
+      expect(hashMock).not.toHaveBeenCalled();
       expect(createUserMock).not.toHaveBeenCalled();
+    });
+
+    it("should propagate repository errors", async () => {
+      getUserByEmailMock.mockResolvedValue(undefined);
+      hashMock.mockResolvedValue("hashed-password" as never);
+      createUserMock.mockRejectedValue(new Error("DynamoDB error"));
+
+      await expect(signup(input)).rejects.toThrow("DynamoDB error");
     });
   });
 
   describe("login", () => {
-    it("should return the generated token for valid credentials", async () => {
-      const token = "generated-token";
+    const input: LoginInput = {
+      email: "  JOHN@EXAMPLE.COM  ",
+      password: "password123",
+    };
 
-      const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+    it("should return a token for valid credentials", async () => {
+      const token = "jwt-token";
 
-      getUserByEmailMock.mockResolvedValueOnce({
-        ...mockedUser,
-        passwordHash,
-      });
+      getUserByEmailMock.mockResolvedValue(mockedUser);
+      compareMock.mockResolvedValue(true as never);
+      generateTokenMock.mockReturnValue(token);
 
-      generateTokenMock.mockReturnValueOnce(token);
-
-      const result = await login({
-        email: " JOHN@EXAMPLE.COM ",
-        password,
-      });
+      const result = await login(input);
 
       expect(result).toBe(token);
 
-      expect(validateEmailMock).toHaveBeenCalledWith(email);
-      expect(getUserByEmailMock).toHaveBeenCalledWith(email);
+      expect(validateEmailMock).toHaveBeenCalledWith("john@example.com");
+      expect(getUserByEmailMock).toHaveBeenCalledWith("john@example.com");
 
-      expect(generateTokenMock).toHaveBeenCalledWith({
-        ...mockedUser,
-        passwordHash,
-      });
+      expect(compareMock).toHaveBeenCalledWith(
+        input.password,
+        mockedUser.passwordHash
+      );
+
+      expect(generateTokenMock).toHaveBeenCalledWith(mockedUser);
     });
 
-    it("should reject an unknown user", async () => {
-      getUserByEmailMock.mockResolvedValueOnce(undefined);
+    it("should reject when the user does not exist", async () => {
+      getUserByEmailMock.mockResolvedValue(undefined);
 
-      await expect(
-        login({
-          email,
-          password,
-        })
-      ).rejects.toThrow("INVALID_CREDENTIALS");
+      await expect(login(input)).rejects.toThrow("INVALID_CREDENTIALS");
+
+      expect(compareMock).not.toHaveBeenCalled();
+      expect(generateTokenMock).not.toHaveBeenCalled();
+    });
+
+    it("should reject when the password does not match", async () => {
+      getUserByEmailMock.mockResolvedValue(mockedUser);
+      compareMock.mockResolvedValue(false as never);
+
+      await expect(login(input)).rejects.toThrow("INVALID_CREDENTIALS");
 
       expect(generateTokenMock).not.toHaveBeenCalled();
     });
 
-    it("should reject an incorrect password", async () => {
-      const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+    it("should normalize the email before searching", async () => {
+      getUserByEmailMock.mockResolvedValue(mockedUser);
+      compareMock.mockResolvedValue(true as never);
+      generateTokenMock.mockReturnValue("token");
 
-      getUserByEmailMock.mockResolvedValueOnce({
-        ...mockedUser,
-        passwordHash,
-      });
+      await login(input);
 
-      await expect(
-        login({
-          email,
-          password: "wrong-password",
-        })
-      ).rejects.toThrow("INVALID_CREDENTIALS");
-
-      expect(generateTokenMock).not.toHaveBeenCalled();
+      expect(getUserByEmailMock).toHaveBeenCalledWith("john@example.com");
     });
 
-    it("should reject an invalid email", async () => {
-      validateEmailMock.mockImplementationOnce(() => {
+    it("should propagate email validation errors", async () => {
+      validateEmailMock.mockImplementation(() => {
         throw new Error("INVALID_EMAIL");
       });
 
-      await expect(
-        login({
-          email: "invalid-email",
-          password,
-        })
-      ).rejects.toThrow("INVALID_EMAIL");
+      await expect(login(input)).rejects.toThrow("INVALID_EMAIL");
 
       expect(getUserByEmailMock).not.toHaveBeenCalled();
+      expect(compareMock).not.toHaveBeenCalled();
+    });
+
+    it("should propagate repository errors", async () => {
+      getUserByEmailMock.mockRejectedValue(new Error("DynamoDB error"));
+
+      await expect(login(input)).rejects.toThrow("DynamoDB error");
     });
   });
 
   describe("getCurrentUser", () => {
-    it("should return the authenticated user", async () => {
-      const cookieHeader = "session=valid-token";
+    it("should return the authenticated user's public data", async () => {
+      const cookies = ["session=token"];
 
-      getAuthenticatedUserIdMock.mockReturnValueOnce(id);
-      getUserByIdMock.mockResolvedValueOnce(mockedUser);
+      getAuthenticatedUserIdMock.mockResolvedValue(mockedUser.id);
+      getUserByIdMock.mockResolvedValue(mockedUser);
 
-      const result = await getCurrentUser(cookieHeader);
-
-      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith(cookieHeader);
-
-      expect(getUserByIdMock).toHaveBeenCalledWith(id);
+      const result = await getCurrentUser(cookies);
 
       expect(result).toEqual({
-        id,
-        email,
+        id: mockedUser.id,
+        email: mockedUser.email,
       });
+
+      expect(getAuthenticatedUserIdMock).toHaveBeenCalledWith(cookies);
+      expect(getUserByIdMock).toHaveBeenCalledWith(mockedUser.id);
     });
 
     it("should reject when the authenticated user does not exist", async () => {
-      const cookieHeader = "session=valid-token";
+      const cookies = ["session=token"];
 
-      getAuthenticatedUserIdMock.mockReturnValueOnce(id);
-      getUserByIdMock.mockResolvedValueOnce(undefined);
+      getAuthenticatedUserIdMock.mockResolvedValue(mockedUser.id);
+      getUserByIdMock.mockResolvedValue(undefined);
 
-      await expect(getCurrentUser(cookieHeader)).rejects.toThrow(
-        "UNAUTHORIZED"
-      );
-
-      expect(getUserByIdMock).toHaveBeenCalledWith(id);
+      await expect(getCurrentUser(cookies)).rejects.toThrow("UNAUTHORIZED");
     });
 
     it("should propagate authentication errors", async () => {
-      getAuthenticatedUserIdMock.mockImplementationOnce(() => {
-        throw new Error("UNAUTHORIZED");
-      });
+      const cookies = ["session=invalid"];
 
-      await expect(getCurrentUser("session=invalid-token")).rejects.toThrow(
+      getAuthenticatedUserIdMock.mockRejectedValue(new Error("UNAUTHORIZED"));
+
+      await expect(getCurrentUser(cookies)).rejects.toThrow("UNAUTHORIZED");
+
+      expect(getUserByIdMock).not.toHaveBeenCalled();
+    });
+
+    it("should not expose the password hash", async () => {
+      getAuthenticatedUserIdMock.mockResolvedValue(mockedUser.id);
+      getUserByIdMock.mockResolvedValue(mockedUser);
+
+      const result = await getCurrentUser(["session=token"]);
+
+      expect(result).not.toHaveProperty("passwordHash");
+      expect(result).toEqual({
+        id: mockedUser.id,
+        email: mockedUser.email,
+      });
+    });
+  });
+
+  describe("updateProfile", () => {
+    it("should update the email when it has changed", async () => {
+      const input: ProfileUpdateInput = {
+        email: "  NEW@EXAMPLE.COM  ",
+      };
+
+      const currentUser: User = {
+        ...mockedUser,
+        email: "old@example.com",
+      };
+
+      getUserByIdMock.mockResolvedValue(currentUser);
+      getUserByEmailMock.mockResolvedValue(undefined);
+      updateUserMock.mockResolvedValue(undefined);
+
+      const result = await updateProfile(currentUser.id, input);
+
+      expect(result).toEqual(["email"]);
+
+      expect(validateEmailMock).toHaveBeenCalledWith("new@example.com");
+
+      expect(getUserByIdMock).toHaveBeenCalledWith(currentUser.id);
+      expect(getUserByEmailMock).toHaveBeenCalledWith("new@example.com");
+
+      expect(updateUserMock).toHaveBeenCalledWith(currentUser.id, {
+        email: "new@example.com",
+      });
+    });
+
+    it("should not update the email when it has not changed", async () => {
+      const input: ProfileUpdateInput = {
+        email: mockedUser.email,
+      };
+
+      getUserByIdMock.mockResolvedValue(mockedUser);
+
+      const result = await updateProfile(mockedUser.id, input);
+
+      expect(result).toEqual([]);
+
+      expect(getUserByEmailMock).not.toHaveBeenCalled();
+      expect(updateUserMock).not.toHaveBeenCalled();
+    });
+
+    it("should reject when the current user cannot be found", async () => {
+      const input: ProfileUpdateInput = {
+        email: "new@example.com",
+      };
+
+      getUserByIdMock.mockResolvedValue(undefined);
+
+      await expect(updateProfile(mockedUser.id, input)).rejects.toThrow(
         "UNAUTHORIZED"
       );
 
+      expect(getUserByEmailMock).not.toHaveBeenCalled();
+      expect(updateUserMock).not.toHaveBeenCalled();
+    });
+
+    it("should reject when the new email is already in use", async () => {
+      const input: ProfileUpdateInput = {
+        email: "new@example.com",
+      };
+
+      getUserByIdMock.mockResolvedValue(mockedUser);
+      getUserByEmailMock.mockResolvedValue({
+        ...mockedUser,
+        id: "another-user-id",
+        email: "new@example.com",
+      });
+
+      await expect(updateProfile(mockedUser.id, input)).rejects.toThrow(
+        "USER_EMAIL_ALREADY_EXISTS"
+      );
+
+      expect(updateUserMock).not.toHaveBeenCalled();
+    });
+
+    it("should update the password", async () => {
+      const input: ProfileUpdateInput = {
+        password: "new-password",
+      };
+
+      const passwordHash = "new-password-hash";
+
+      hashMock.mockResolvedValue(passwordHash as never);
+      updateUserMock.mockResolvedValue(undefined);
+
+      const result = await updateProfile(mockedUser.id, input);
+
+      expect(result).toEqual(["password"]);
+
+      expect(validatePasswordMock).toHaveBeenCalledWith(input.password);
+
+      expect(hashMock).toHaveBeenCalledWith(input.password, BCRYPT_SALT_ROUNDS);
+
+      expect(updateUserMock).toHaveBeenCalledWith(mockedUser.id, {
+        passwordHash,
+      });
+    });
+
+    it("should update email and password together", async () => {
+      const input: ProfileUpdateInput = {
+        email: "new@example.com",
+        password: "new-password",
+      };
+
+      const currentUser: User = {
+        ...mockedUser,
+        email: "old@example.com",
+      };
+
+      getUserByIdMock.mockResolvedValue(currentUser);
+      getUserByEmailMock.mockResolvedValue(undefined);
+      hashMock.mockResolvedValue("new-password-hash" as never);
+      updateUserMock.mockResolvedValue(undefined);
+
+      const result = await updateProfile(currentUser.id, input);
+
+      expect(result).toEqual(["email", "password"]);
+
+      expect(updateUserMock).toHaveBeenCalledWith(currentUser.id, {
+        email: "new@example.com",
+        passwordHash: "new-password-hash",
+      });
+    });
+
+    it("should not update anything when no fields are provided", async () => {
+      const input: ProfileUpdateInput = {};
+
+      const result = await updateProfile(mockedUser.id, input);
+
+      expect(result).toEqual([]);
+
       expect(getUserByIdMock).not.toHaveBeenCalled();
+      expect(getUserByEmailMock).not.toHaveBeenCalled();
+      expect(hashMock).not.toHaveBeenCalled();
+      expect(updateUserMock).not.toHaveBeenCalled();
+    });
+
+    it("should propagate email validation errors", async () => {
+      const input: ProfileUpdateInput = {
+        email: "invalid-email",
+      };
+
+      validateEmailMock.mockImplementation(() => {
+        throw new Error("INVALID_EMAIL");
+      });
+
+      await expect(updateProfile(mockedUser.id, input)).rejects.toThrow(
+        "INVALID_EMAIL"
+      );
+
+      expect(getUserByIdMock).not.toHaveBeenCalled();
+      expect(updateUserMock).not.toHaveBeenCalled();
+    });
+
+    it("should propagate password validation errors", async () => {
+      const input: ProfileUpdateInput = {
+        password: "short",
+      };
+
+      validatePasswordMock.mockImplementation(() => {
+        throw new Error("INVALID_PASSWORD");
+      });
+
+      await expect(updateProfile(mockedUser.id, input)).rejects.toThrow(
+        "INVALID_PASSWORD"
+      );
+
+      expect(hashMock).not.toHaveBeenCalled();
+      expect(updateUserMock).not.toHaveBeenCalled();
+    });
+
+    it("should not search for an existing email when the email is unchanged", async () => {
+      const input: ProfileUpdateInput = {
+        email: mockedUser.email,
+      };
+
+      getUserByIdMock.mockResolvedValue(mockedUser);
+
+      await updateProfile(mockedUser.id, input);
+
+      expect(getUserByEmailMock).not.toHaveBeenCalled();
+    });
+
+    it("should propagate repository errors", async () => {
+      getUserByIdMock.mockRejectedValue(new Error("DynamoDB error"));
+
+      await expect(
+        updateProfile(mockedUser.id, {
+          email: "new@example.com",
+        })
+      ).rejects.toThrow("DynamoDB error");
     });
   });
 });

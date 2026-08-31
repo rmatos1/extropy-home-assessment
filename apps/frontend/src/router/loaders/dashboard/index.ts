@@ -15,7 +15,7 @@ export function overviewLoader(): Promise<SpendingReportResponse> {
 export async function expensesLoader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
 
-  const [, expenses] = await Promise.all([
+  const [categories, expenses] = await Promise.all([
     getCategories(),
     getExpenses({
       startDate: url.searchParams.get("startDate") ?? undefined,
@@ -24,7 +24,7 @@ export async function expensesLoader({ request }: LoaderFunctionArgs) {
     }),
   ]);
 
-  return expenses;
+  return { categories, expenses };
 }
 
 export function categoriesLoader() {

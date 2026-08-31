@@ -2,11 +2,16 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Rectangle,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
+  type BarShapeProps,
 } from "recharts";
+
+import { graphColors } from "../../overview.constants";
+import { formatMonth } from "../../../../helpers";
 
 type MonthlySpendingData = {
   month: string;
@@ -18,6 +23,14 @@ type MonthlySpendingProps = {
 };
 
 export function MonthlySpending({ data }: MonthlySpendingProps) {
+  const CustomBar = (props: BarShapeProps) => {
+    const { index, ...rest } = props;
+
+    return (
+      <Rectangle {...rest} fill={graphColors[index % graphColors.length]} />
+    );
+  };
+
   return (
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <h3 className="text-lg font-semibold text-gray-900">Monthly spending</h3>
@@ -27,10 +40,14 @@ export function MonthlySpending({ data }: MonthlySpendingProps) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
               <CartesianGrid vertical={false} />
-              <XAxis dataKey="month" />
+
+              <XAxis dataKey="month" tickFormatter={formatMonth} />
+
               <YAxis />
-              <Tooltip />
-              <Bar dataKey="amount" />
+
+              <Tooltip labelFormatter={formatMonth} />
+
+              <Bar dataKey="amount" radius={[4, 4, 0, 0]} shape={CustomBar} />
             </BarChart>
           </ResponsiveContainer>
         ) : (

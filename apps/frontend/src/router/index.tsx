@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router";
 
-import { AuthLayout, DashboardLayout } from "../layouts";
+import { AuthLayout, DashboardLayout, RootLayout } from "../layouts";
+import { ErrorBoundary, LoadingScreen } from "../components";
 import {
   Login,
   Signup,
@@ -14,8 +15,7 @@ import {
   signupAction,
   updateProfileAction,
   logoutAction,
-  createExpenseAction,
-  updateExpenseAction,
+  expenseActions,
   createCategoryAction,
 } from "./actions";
 import {
@@ -28,66 +28,74 @@ import {
 
 export const router = createBrowserRouter([
   {
-    element: <AuthLayout />,
+    element: <RootLayout />,
+    ErrorBoundary,
+    HydrateFallback: LoadingScreen,
     children: [
       {
-        path: "/",
-        element: <Navigate to="/login" replace />,
+        element: <AuthLayout />,
+        children: [
+          {
+            path: "/",
+            element: <Navigate to="/login" replace />,
+          },
+          {
+            path: "/login",
+            Component: Login,
+            action: loginAction,
+            loader: redirectAuthenticatedLoader,
+          },
+          {
+            path: "/signup",
+            Component: Signup,
+            action: signupAction,
+            loader: redirectAuthenticatedLoader,
+          },
+        ],
       },
       {
-        path: "/login",
-        Component: Login,
-        action: loginAction,
-        loader: redirectAuthenticatedLoader,
-      },
-      {
-        path: "/signup",
-        Component: Signup,
-        action: signupAction,
-        loader: redirectAuthenticatedLoader,
-      },
-    ],
-  },
-  {
-    element: <DashboardLayout />,
-    loader: requireAuthLoader,
-    children: [
-      {
-        path: "/overview",
-        Component: Overview,
-        loader: overviewLoader,
-        handle: {
-          name: "Overview",
-        },
-      },
-      {
-        path: "/expenses",
-        Component: Expenses,
-        loader: expensesLoader,
-        handle: {
-          name: "Expenses",
-        },
-      },
-      {
-        path: "/categories",
-        Component: Categories,
-        loader: categoriesLoader,
-        action: createCategoryAction,
-        handle: {
-          name: "Categories",
-        },
-      },
-      {
-        path: "/profile",
-        Component: Profile,
-        action: updateProfileAction,
-        handle: {
-          name: "Profile",
-        },
-      },
-      {
-        path: "/logout",
-        action: logoutAction,
+        element: <DashboardLayout />,
+        loader: requireAuthLoader,
+        children: [
+          {
+            path: "/overview",
+            Component: Overview,
+            loader: overviewLoader,
+            handle: {
+              name: "Overview",
+            },
+          },
+          {
+            path: "/expenses",
+            Component: Expenses,
+            loader: expensesLoader,
+            action: expenseActions,
+            handle: {
+              name: "Expenses",
+            },
+          },
+          {
+            path: "/categories",
+            Component: Categories,
+            loader: categoriesLoader,
+            action: createCategoryAction,
+            handle: {
+              name: "Categories",
+            },
+          },
+          {
+            path: "/profile",
+            Component: Profile,
+            action: updateProfileAction,
+            handle: {
+              name: "Profile",
+            },
+          },
+          {
+            path: "/logout",
+            action: logoutAction,
+          },
+        ],
       },
     ],
   },

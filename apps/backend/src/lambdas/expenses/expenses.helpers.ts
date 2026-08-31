@@ -1,5 +1,11 @@
 export function validateAmount(amount: number): void {
-  if (!Number.isInteger(amount) || amount <= 0) {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("INVALID_AMOUNT");
+  }
+
+  const decimalPlaces = amount.toString().split(".")[1]?.length ?? 0;
+
+  if (decimalPlaces > 2) {
     throw new Error("INVALID_AMOUNT");
   }
 }
