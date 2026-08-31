@@ -7,7 +7,7 @@ import { useFormRowHelper } from "../useFormRowHelper.hook";
 import {
   formData,
   mockedCategories,
-  mockedSuggestion,
+  mockedFormRowHelper,
   onClickSuggestedCategory,
 } from "./mocks";
 
@@ -104,7 +104,7 @@ describe("FormRow", () => {
   beforeEach(() => {
     vi.resetAllMocks();
 
-    useFormRowHelperMock.mockReturnValue(mockedSuggestion);
+    useFormRowHelperMock.mockReturnValue(mockedFormRowHelper);
   });
 
   it("should render the row", () => {
@@ -214,7 +214,7 @@ describe("FormRow", () => {
 
   it("should render the suggestion loading state", () => {
     useFormRowHelperMock.mockReturnValue({
-      ...mockedSuggestion,
+      ...mockedFormRowHelper,
       showSuggestion: true,
       isSuggestingCategory: true,
     });
@@ -226,7 +226,7 @@ describe("FormRow", () => {
 
   it("should render the suggested category button", () => {
     useFormRowHelperMock.mockReturnValue({
-      ...mockedSuggestion,
+      ...mockedFormRowHelper,
       showSuggestion: true,
       suggestionTextButton: "Use category Food",
     });
@@ -244,7 +244,7 @@ describe("FormRow", () => {
     const user = userEvent.setup();
 
     useFormRowHelperMock.mockReturnValue({
-      ...mockedSuggestion,
+      ...mockedFormRowHelper,
       showSuggestion: true,
       suggestionTextButton: "Use category Food",
     });
@@ -293,7 +293,7 @@ describe("FormRow", () => {
 
   it("should render bottom spacing when a suggestion is visible", () => {
     useFormRowHelperMock.mockReturnValue({
-      ...mockedSuggestion,
+      ...mockedFormRowHelper,
       showSuggestion: true,
       suggestionTextButton: "Use category Food",
     });

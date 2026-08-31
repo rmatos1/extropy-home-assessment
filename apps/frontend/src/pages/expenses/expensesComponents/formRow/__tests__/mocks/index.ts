@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { Category } from "@extropy/shared";
+import type { Category, SuggestCategoryResponse } from "@extropy/shared";
 import type { ExpenseFormData } from "../../../../expenses.types";
 
 export const formData: ExpenseFormData = {
@@ -28,7 +28,12 @@ export const mockedCategories: Category[] = [
 const onChangeDescription = vi.fn();
 export const onClickSuggestedCategory = vi.fn();
 
-export const mockedSuggestion = {
+export const mockedSuggestion: SuggestCategoryResponse = {
+  categoryId: "food",
+  confidence: 0.95,
+};
+
+export const mockedFormRowHelper = {
   categorySelectRef: { current: null },
   amountRef: { current: null },
   showSuggestion: false,
