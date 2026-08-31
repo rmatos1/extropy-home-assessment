@@ -8,7 +8,6 @@ The application allows users to authenticate, manage expenses and categories, fi
 
 - Frontend: https://extropy-home-assessment.vercel.app
 - API: https://zpi4rbmxil.execute-api.us-east-1.amazonaws.com
-- Repository: https://github.com/rmatos1/extropy-home-assessment
 
 ## Features
 
