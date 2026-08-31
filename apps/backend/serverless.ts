@@ -9,12 +9,11 @@ const serverlessConfiguration = {
     name: "aws",
     runtime: "nodejs22.x",
     region: "us-east-1",
-    stage: "${opt:stage, 'dev'}",
 
     environment: {
-      USERS_TABLE_NAME: "extropy-${sls:stage}-users",
-      EXPENSES_TABLE_NAME: "extropy-${sls:stage}-expenses",
-      CATEGORIES_TABLE_NAME: "extropy-${sls:stage}-categories",
+      USERS_TABLE_NAME: "extropy-users",
+      EXPENSES_TABLE_NAME: "extropy-expenses",
+      CATEGORIES_TABLE_NAME: "extropy-categories",
 
       JWT_SECRET: "${env:JWT_SECRET}",
       OPENAI_API_KEY: "${env:OPENAI_API_KEY}",
@@ -22,9 +21,7 @@ const serverlessConfiguration = {
 
     httpApi: {
       cors: {
-        allowedOrigins: [
-          "https://lq2y8jcsc8.execute-api.us-east-1.amazonaws.com",
-        ],
+        allowedOrigins: ["https://extropy-home-assessment.vercel.app/"],
         allowedHeaders: ["Content-Type"],
         allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allowCredentials: true,
@@ -144,7 +141,7 @@ const serverlessConfiguration = {
         Type: "AWS::DynamoDB::Table",
 
         Properties: {
-          TableName: "extropy-${sls:stage}-users",
+          TableName: "extropy-users",
           BillingMode: "PAY_PER_REQUEST",
 
           PointInTimeRecoverySpecification: {
@@ -193,7 +190,7 @@ const serverlessConfiguration = {
         Type: "AWS::DynamoDB::Table",
 
         Properties: {
-          TableName: "extropy-${sls:stage}-expenses",
+          TableName: "extropy-expenses",
           BillingMode: "PAY_PER_REQUEST",
 
           PointInTimeRecoverySpecification: {
@@ -250,7 +247,7 @@ const serverlessConfiguration = {
         Type: "AWS::DynamoDB::Table",
 
         Properties: {
-          TableName: "extropy-${sls:stage}-categories",
+          TableName: "extropy-categories",
           BillingMode: "PAY_PER_REQUEST",
 
           PointInTimeRecoverySpecification: {
